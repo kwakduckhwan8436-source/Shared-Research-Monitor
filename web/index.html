@@ -1301,7 +1301,7 @@ function evKo(k){ return EV_KO[k]||k; }
 var state = {
 horizon: "swing", scrMode: "foreign", scrMarket: "", scrData: null, data: null, sel: null, view: "evidence",
 explanation: "", explLoading: false, diag: null, diagLoading: false,
-legalDoc: null, adminOpen: false, adminToken: (function(){try{return localStorage.getItem("reco_admin_tok")||null;}catch(e){return null;}})(), adminReports: null, adminBanned: null, adminStats: null, policyDiag: null,
+legalDoc: null, adminOpen: false, adminToken: (function(){try{return localStorage.getItem("reco_admin_tok")||null;}catch(e){return null;}})(), adminReports: null, adminBanned: null, adminStats: null, policyDiag: null, corpDiag: null,
 cal: null, calY: 0, calM: 0, calFilter: {}, calAdminOpen: false, calAdminList: null, mTab: "cal",
 glossaryOpen: false, glossary: null, glossQ: "", glossCat: "전체", dguideOpen: false, dguide: null,
 startOpen: false, startGuide: null, startTab: "guide",
@@ -2163,6 +2163,10 @@ admStatsHTML()+
 '<div class="adm-banned"><div class="adm-sec">정부정책 RSS 점검</div>'+
 (state.policyDiag!=null ? policyDiagHTML() :
 '<button class="adm-sbtn" data-action="policy-diag">RSS 주소 점검(어떤 부처가 실시간 되는지)</button>')+
+'</div>'+
+'<div class="adm-banned"><div class="adm-sec">기업이벤트(공공데이터) 점검</div>'+
+(state.corpDiag!=null ? corpDiagHTML() :
+'<button class="adm-sbtn" data-action="corp-diag">기업이벤트 API 점검(배당·증자·자사주·보호예수)</button>')+
 '</div>';
 }
 return '<div class="modalwrap" data-action="admin-close"><div class="modal adminmodal" data-stop="1">'+
@@ -3374,6 +3378,25 @@ body:JSON.stringify({events:state.calAdminList||[]})})
 .then(function(r){return r.json();}).then(function(){ render(); loadCalendar(); })
 .catch(function(){ alert("저장 실패"); });
 }
+function corpDiagHTML(){
+var d=state.corpDiag;
+if(!d) return '<div class="adm-empty">점검 결과 없음</div>';
+if(d.loading) return '<div class="adm-load">점검 중…</div>';
+if(d.error) return '<div class="pd-err">'+esc(d.error)+(d.hint?'<br>'+esc(d.hint):'')+'</div>'+
+  '<button class="adm-sbtn" data-action="corp-diag">다시 점검</button>';
+var NAMES={dividend:"배당",rights:"증자",treasury:"자사주",lockup:"보호예수",corp:"기업정보"};
+var rows=(d.results||[]).map(function(r){
+var badge = r.ok? '<span class="pd-ok">● 정상 '+r.item_count+'건</span>' : '<span class="pd-bad">● 실패</span>';
+return '<div class="pd-row"><span class="pd-name">'+esc(NAMES[r.kind]||r.kind)+'</span>'+badge+
+(r.hint?'<span class="pd-err">'+esc(r.hint)+'</span>':'')+'</div>';
+}).join('');
+return '<div class="pd-summary">정상 응답: <b>'+(d.alive||0)+'/'+(d.total||0)+'</b></div>'+
+'<div class="pd-list">'+rows+'</div>'+
+'<div class="adm-note">실패 시: 공공데이터포털에서 해당 데이터 활용신청 후, Swagger 명세의 정확한 '+
+'요청주소를 확인해 환경변수(RECO_CORP_EP_DIVIDEND 등)로 넣거나 ENDPOINTS 를 수정하세요. '+
+'데이터는 전일 기준이라 주말엔 결과가 적을 수 있습니다.</div>'+
+'<button class="adm-sbtn" data-action="corp-diag">다시 점검</button>';
+}
 function policyDiagHTML(){
 var d=state.policyDiag;
 if(!d || !d.sources) return '<div class="adm-empty">점검 결과 없음</div>';
@@ -3762,6 +3785,12 @@ state.policyDiag={loading:true}; render();
 fetch(API+"/api/feed/policy/diag",{headers:{"x-admin-token":state.adminToken||""}})
 .then(function(r){return r.json();}).then(function(j){ state.policyDiag=j; render(); })
 .catch(function(){ state.policyDiag={alive:0,total:0,sources:[],error:"점검 실패"}; render(); });
+}
+else if(a==="corp-diag"){
+state.corpDiag={loading:true}; render();
+fetch(API+"/api/corp/diag",{headers:{"x-admin-token":state.adminToken||""}})
+.then(function(r){return r.json();}).then(function(j){ state.corpDiag=j; render(); })
+.catch(function(){ state.corpDiag={error:"점검 실패(네트워크)"}; render(); });
 }
 else if(a==="admin-stats-load"){
 fetch(API+"/api/admin/stats?days=7",{headers:{"x-admin-token":state.adminToken||""}})
