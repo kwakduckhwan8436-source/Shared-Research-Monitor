@@ -172,10 +172,10 @@ background:linear-gradient(135deg,var(--panel2),var(--panel));border:1px solid v
 .cal-title{font-size:15px;font-weight:800;color:var(--ink);letter-spacing:-.3px}
 .cal-nav{background:var(--bg);border:1px solid var(--line2);color:var(--ink2);width:30px;height:30px;border-radius:9px;cursor:pointer;font-size:17px;line-height:1;transition:all .15s}
 .cal-nav:hover{border-color:var(--teal);color:var(--teal);transform:scale(1.05)}
-.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
-.cal-dcell{text-align:center;font-size:10.5px;font-weight:600;color:var(--muted);padding:3px 0 6px;align-self:center}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.cal-dcell{text-align:center;font-size:10px;font-weight:600;color:var(--muted);padding:2px 0 4px;align-self:center}
 .cal-dcell.sun{color:#ff7a7a}.cal-dcell.sat{color:#6fa8ff}
-.cal-cell{position:relative;aspect-ratio:1/1;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:9px;font-size:12.5px;color:var(--ink2);min-height:40px;transition:background .12s,transform .12s}
+.cal-cell{position:relative;min-height:34px;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:7px;font-size:12px;color:var(--ink2);transition:background .12s,transform .12s}
 .cal-cell.empty{background:transparent}
 .cal-cell.has{cursor:pointer;background:var(--panel);border:1px solid var(--line)}
 .cal-cell.has:hover{background:var(--panel3);transform:translateY(-1px);box-shadow:0 3px 8px rgba(0,0,0,.15)}
@@ -185,9 +185,9 @@ background:linear-gradient(135deg,var(--panel2),var(--panel));border:1px solid v
 .cal-cell.today{background:var(--teal);box-shadow:0 2px 10px rgba(80,200,190,.35)}
 .cal-cell.today .cal-num{color:#04201d;font-weight:800}
 .cal-cell.today .cal-dot{box-shadow:0 0 0 1.5px rgba(255,255,255,.7)}
-.cal-num{font-size:12.5px;font-weight:600}
-.cal-dots{display:flex;gap:2.5px;margin-top:3px}
-.cal-dot{width:6px;height:6px;border-radius:50%;display:inline-block}
+.cal-num{font-size:12px;font-weight:600}
+.cal-dots{display:flex;gap:2px;margin-top:2px}
+.cal-dot{width:5px;height:5px;border-radius:50%;display:inline-block}
 .cal-dot.holiday{background:#ff5b5b}.cal-dot.expiry{background:#e7ad48}
 .cal-dot.dividend{background:#7fe6b0}.cal-dot.custom{background:#6fa8ff}
 .cal-dot.econ{background:#c98bff}.cal-dot.disclosure{background:#f0a868}.cal-dot.filing{background:#5b9dff}.cal-dot.global{background:#4db8e8}
@@ -358,7 +358,7 @@ gap:3px;padding:6px 0;cursor:pointer;color:var(--muted);min-height:48px}
 .nmeta{font-size:11px}
 .feedbody{padding:6px 15px 18px}
 /* 캘린더: 폰에서 크게 + 터치 쉽게 */
-.cal-cell{min-height:46px}
+.cal-cell{min-height:40px}
 .cal-num{font-size:14px}
 .cal-dot{width:7px;height:7px}
 .cal-head{padding:12px 14px}
@@ -392,7 +392,7 @@ gap:3px;padding:6px 0;cursor:pointer;color:var(--muted);min-height:48px}
 .sg-step,.sg-q{font-size:16px}.sg-a{font-size:14px;line-height:1.7}
 }
 @media (max-width:420px){
-.cal-cell{min-height:42px}
+.cal-cell{min-height:38px}
 .cal-legend{font-size:10px;gap:7px}
 .top-meta .btn{font-size:12px;padding:6px 9px}
 .brand{font-size:15px}
