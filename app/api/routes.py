@@ -1801,6 +1801,18 @@ def register_routes(app: Any, ctx: Any) -> None:
             return []
         return evs
 
+    @app.get("/api/calendar/coverage")
+    def calendar_coverage(request: Request) -> dict:
+        """운영자용 — 내장 연간 일정(FOMC·중앙은행 등)이 어느 해까지 채워졌는지.
+        연말에 다음 해 일정 갱신이 필요한지 알려준다."""
+        if not _is_admin(request):
+            return {"ok": False, "error": "운영자 토큰이 필요합니다(x-admin-token)."}
+        try:
+            from app.core.econ_events import schedule_coverage
+            return {"ok": True, **schedule_coverage()}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
     @app.get("/api/calendar")
     def market_calendar(year: int = 0, month: int = 0) -> dict:
         """증시 캘린더 — 휴장일·만기일·배당락(참고) + 운영자 등록 일정.
