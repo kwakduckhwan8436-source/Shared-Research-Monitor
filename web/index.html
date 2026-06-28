@@ -173,8 +173,7 @@ background:linear-gradient(135deg,var(--panel2),var(--panel));border:1px solid v
 .cal-nav{background:var(--bg);border:1px solid var(--line2);color:var(--ink2);width:30px;height:30px;border-radius:9px;cursor:pointer;font-size:17px;line-height:1;transition:all .15s}
 .cal-nav:hover{border-color:var(--teal);color:var(--teal);transform:scale(1.05)}
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
-.cal-dow{margin-bottom:4px}
-.cal-dcell{text-align:center;font-size:10.5px;font-weight:600;color:var(--muted);padding:3px 0}
+.cal-dcell{text-align:center;font-size:10.5px;font-weight:600;color:var(--muted);padding:3px 0 6px;align-self:center}
 .cal-dcell.sun{color:#ff7a7a}.cal-dcell.sat{color:#6fa8ff}
 .cal-cell{position:relative;aspect-ratio:1/1;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:9px;font-size:12.5px;color:var(--ink2);min-height:40px;transition:background .12s,transform .12s}
 .cal-cell.empty{background:transparent}
@@ -1771,17 +1770,18 @@ filteredEvents.push(e);
 (evMap[e.date]=evMap[e.date]||[]).push(e);
 });
 }
-// 달력 그리드
+// 달력 그리드 — 요일헤더 + 빈칸 + 날짜를 '하나의 그리드'에 넣어 컬럼 정렬을 보장
 var first=new Date(y,m-1,1);
 var startDow=first.getDay();           // 0=일
 var daysInMonth=new Date(y,m,0).getDate();
-var cells='';
 var dows=['일','월','화','수','목','금','토'];
-var dowRow='<div class="cal-grid cal-dow">'+dows.map(function(d,i){
+// 1) 요일 헤더 7칸(그리드 첫 줄)
+var cells=dows.map(function(d,i){
 return '<div class="cal-dcell'+(i===0?' sun':(i===6?' sat':''))+'">'+d+'</div>';
-}).join('')+'</div>';
-var grid='';
-for(var i=0;i<startDow;i++){ grid+='<div class="cal-cell empty"></div>'; }
+}).join('');
+// 2) 1일 앞 빈칸
+for(var i=0;i<startDow;i++){ cells+='<div class="cal-cell empty"></div>'; }
+// 3) 날짜칸
 for(var d=1;d<=daysInMonth;d++){
 var ds=y+'-'+(m<10?'0'+m:m)+'-'+(d<10?'0'+d:d);
 var evs=evMap[ds]||[];
@@ -1793,7 +1793,7 @@ cells+='<div class="cal-cell'+(isToday?' today':'')+(hol?' holiday':'')+(dow===0
 (evs.length?(' data-action="cal-day" data-d="'+ds+'"'):'')+'>'+
 '<span class="cal-num">'+d+'</span>'+(dots?'<span class="cal-dots">'+dots+'</span>':'')+'</div>';
 }
-grid='<div class="cal-grid">'+cells+'</div>';
+var grid='<div class="cal-grid">'+cells+'</div>';
 // 이벤트 리스트(이번 달 전체)
 var listItems='';
 if(c && c.year===y && c.month===m && filteredEvents.length){
@@ -1841,7 +1841,7 @@ var tools='<div class="cal-tools">'+
 (state.adminToken?'<button class="cal-tool" data-action="cal-admin-open">✎ 일정 편집</button>':'')+
 '</div>';
 return '<div class="calwrap"><div class="label">📅 증시 캘린더</div>'+
-head+weekBanner+dowRow+grid+legend+filterBar+tools+
+head+weekBanner+grid+legend+filterBar+tools+
 '<div class="cal-list">'+listItems+'</div>'+
 '<div class="note" style="margin-top:10px">휴장일·선물옵션 만기일·배당락(참고)·금리결정·공시 등 공개 일정입니다. 투자 판단의 근거가 아닌 참고용입니다.</div>'+
 '</div>';
