@@ -38,6 +38,38 @@ _US_MARKET_HOLIDAYS_2026 = {
     "2026-11-26": "추수감사절", "2026-12-25": "크리스마스",
 }
 
+# 2026년 FOMC 의사록 공개(통상 회의 약 3주 후) — 공개 일정
+_FOMC_MINUTES_2026 = [
+    "2026-02-18", "2026-04-08", "2026-05-20", "2026-07-08",
+    "2026-08-19", "2026-10-07", "2026-11-18", "2026-12-30",
+]
+# 2026년 일본은행(BOJ) 금융정책결정회의(둘째 날=결정일)
+_BOJ_2026 = [
+    "2026-01-23", "2026-03-19", "2026-04-28", "2026-06-16",
+    "2026-07-29", "2026-09-18", "2026-10-30", "2026-12-18",
+]
+# 2026년 유럽중앙은행(ECB) 통화정책회의(통화정책결정일)
+_ECB_2026 = [
+    "2026-01-29", "2026-03-12", "2026-04-30", "2026-06-11",
+    "2026-07-23", "2026-09-10", "2026-10-29", "2026-12-17",
+]
+# 2026년 영란은행(BOE) 통화정책회의(MPC 발표일)
+_BOE_2026 = [
+    "2026-02-05", "2026-03-19", "2026-05-07", "2026-06-18",
+    "2026-08-06", "2026-09-17", "2026-11-05", "2026-12-17",
+]
+# 2026년 한국은행 주요 경제통계 공표일(공개 일정) — (날짜, 라벨)
+_BOK_STATS_2026 = [
+    ("2026-01-22", "한국은행 실질GDP(속보, 4분기)"),
+    ("2026-03-05", "한국은행 국제수지(1월)"),
+    ("2026-04-23", "한국은행 실질GDP(속보, 1분기)"),
+    ("2026-06-04", "한국은행 가계신용(1분기)"),
+    ("2026-07-23", "한국은행 실질GDP(속보, 2분기)"),
+    ("2026-09-03", "한국은행 국제수지(7월)"),
+    ("2026-10-23", "한국은행 실질GDP(속보, 3분기)"),
+    ("2026-11-19", "한국은행 가계신용(3분기)"),
+]
+
 
 def _is_weekend(d: date) -> bool:
     return d.weekday() >= 5
@@ -57,6 +89,14 @@ def _last_business_day(year: int, month: int) -> date:
     return last
 
 
+def _nth_weekday(year: int, month: int, weekday: int, nth: int) -> date:
+    """그 달의 n번째 특정 요일 날짜(weekday: 월=0..일=6). 규칙 기반 자동 계산."""
+    d = date(year, month, 1)
+    offset = (weekday - d.weekday()) % 7
+    first = d + timedelta(days=offset)
+    return first + timedelta(days=7 * (nth - 1))
+
+
 # ── 자본시장법상 정기보고서 법정 제출기한(12월 결산법인 기준) ──
 # 사업보고서: 사업연도 경과 후 90일 이내 → 3/31
 # 1분기보고서: 분기 경과 후 45일 → 5/15
@@ -68,6 +108,46 @@ _FILING_DEADLINES = {
     8: ("2026-08-14", "반기보고서 제출기한(12월 결산법인)"),
     11: ("2026-11-16", "3분기보고서 제출기한(12월 결산법인)"),  # 11/14 토 → 익영업일
 }
+
+
+def schedule_coverage() -> dict:
+    """내장된 연간 일정(FOMC·중앙은행 등)이 어느 해까지 채워져 있는지 보고.
+    운영자가 연말에 다음 해 일정을 갱신해야 하는지 판단하는 용도."""
+    def _years(seq):
+        ys = set()
+        for x in seq:
+            ds = x[0] if isinstance(x, (tuple, list)) else x
+            ys.add(ds[:4])
+        return sorted(ys)
+    groups = {
+        "한은 금통위": _BOK_MPC_2026,
+        "미 FOMC": _FOMC_2026,
+        "미 CPI": _US_CPI_2026,
+        "FOMC 의사록": _FOMC_MINUTES_2026,
+        "일본은행(BOJ)": _BOJ_2026,
+        "유럽중앙은행(ECB)": _ECB_2026,
+        "영란은행(BOE)": _BOE_2026,
+        "한국은행 통계": _BOK_STATS_2026,
+        "미국 증시 휴장": list(_US_MARKET_HOLIDAYS_2026.keys()),
+    }
+    today = date.today()
+    out = []
+    max_year = 0
+    for name, seq in groups.items():
+        ys = _years(seq)
+        last = max((int(y) for y in ys), default=0)
+        max_year = max(max_year, last)
+        out.append({"name": name, "years": ys, "last_year": last,
+                    "count": len(seq)})
+    # 올해 말까지 남은 일수 기준 경고
+    need_update = (max_year <= today.year and today.month >= 11)
+    return {"today": today.isoformat(), "max_year": max_year,
+            "auto_computed": ["미국 고용(첫 금요일)", "한국 수출입(매월 1일)",
+                              "한국 물가(둘째 영업일)", "한국 고용(둘째 수요일)",
+                              "한국 산업활동(말 영업일)", "ETF 분배(분기 말)"],
+            "groups": out, "need_update": need_update,
+            "hint": ("연말입니다. 다음 해 일정을 econ_events.py 에 추가하세요."
+                     if need_update else "현재 연도 일정이 채워져 있습니다.")}
 
 
 def econ_events(year: int, month: int) -> list[dict]:
@@ -100,6 +180,28 @@ def econ_events(year: int, month: int) -> list[dict]:
         if ds.startswith(pref):
             out.append({"date": ds, "type": "global",
                         "label": f"미국 증시 휴장 · {nm}"})
+    # FOMC 의사록 공개
+    for ds in _FOMC_MINUTES_2026:
+        if ds.startswith(pref):
+            out.append({"date": ds, "type": "econ",
+                        "label": "미 연준 FOMC 의사록 공개"})
+    # 해외 중앙은행 통화정책회의(글로벌)
+    for ds in _BOJ_2026:
+        if ds.startswith(pref):
+            out.append({"date": ds, "type": "global",
+                        "label": "일본은행(BOJ) 금융정책결정회의"})
+    for ds in _ECB_2026:
+        if ds.startswith(pref):
+            out.append({"date": ds, "type": "global",
+                        "label": "유럽중앙은행(ECB) 통화정책회의"})
+    for ds in _BOE_2026:
+        if ds.startswith(pref):
+            out.append({"date": ds, "type": "global",
+                        "label": "영란은행(BOE) 통화정책회의"})
+    # 한국은행 주요 경제통계 공표
+    for ds, label in _BOK_STATS_2026:
+        if ds.startswith(pref):
+            out.append({"date": ds, "type": "econ", "label": label})
 
     # 한국 지표 — 통계청 소비자물가(매월 초), 관세청 수출입동향(매월 1일)
     # 관세청 수출입동향: 매월 1일 발표(전월 실적). 1일이 휴일이면 익영업일.
@@ -122,6 +224,16 @@ def econ_events(year: int, month: int) -> list[dict]:
         cur = cur + timedelta(days=1)
     out.append({"date": cur.isoformat(), "type": "econ",
                 "label": "한국 소비자물가동향(통계청) 발표(참고)"})
+
+    # 한국 고용동향(통계청) — 통상 매월 두 번째 수요일경 발표(규칙 기반 자동 계산)
+    emp = _nth_weekday(year, month, 2, 2)   # 수요일=2, 둘째 주
+    out.append({"date": emp.isoformat(), "type": "econ",
+                "label": "한국 고용동향(통계청) 발표(참고)"})
+
+    # 한국 산업활동동향(통계청) — 통상 매월 말일경 발표(전월 실적, 규칙 기반 자동)
+    ind = _last_business_day(year, month)
+    out.append({"date": ind.isoformat(), "type": "econ",
+                "label": "한국 산업활동동향(통계청) 발표(참고)"})
 
     # ETF 분배금 지급 기준일 — 통상 1·4·7·10·12월 마지막 영업일(분배락)
     if month in (1, 4, 7, 10, 12):
