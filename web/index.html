@@ -195,7 +195,7 @@ background:linear-gradient(135deg,var(--panel2),var(--panel));border:1px solid v
 .cal-dot.econ{background:#c98bff}.cal-dot.disclosure{background:#f0a868}.cal-dot.filing{background:#5b9dff}.cal-dot.global{background:#4db8e8}
 .cal-legend{display:flex;flex-wrap:wrap;gap:9px;margin:12px 0 6px;font-size:10px;color:var(--muted)}
 .cal-legend span{display:inline-flex;align-items:center;gap:4px}
-.cal-list{margin-top:10px;display:flex;flex-direction:column;gap:5px;max-height:280px;overflow-y:auto}
+.cal-list{margin-top:10px;display:flex;flex-direction:column;gap:5px;max-height:170px;overflow-y:auto}
 .cal-ev{display:flex;gap:9px;align-items:center;padding:8px 11px;border-radius:9px;background:var(--panel);border-left:3px solid var(--line2);transition:transform .12s,background .12s}
 .cal-ev:hover{transform:translateX(2px)}
 .cal-ev.holiday{border-left-color:#ff5b5b}.cal-ev.expiry{border-left-color:#e7ad48}
@@ -301,10 +301,10 @@ gap:1px;background:var(--line);overflow:hidden}
 .main.dash{grid-template-columns:208px 1fr}
 @media (max-width:1400px){ .main.dash{grid-template-columns:188px 1fr} }
 /* 새 4컬럼: 스크리너 | 리포트 | 공시 | (뉴스+채팅 세로) — 종류별 비율 */
-.main.dash4{grid-template-columns:340px 1.2fr 0.98fr 0.78fr;gap:1px}
+.main.dash4{grid-template-columns:390px 1.15fr 0.95fr 0.75fr;gap:1px}
 .main.dash3{display:grid;grid-template-columns:1.4fr 1.05fr 0.85fr;gap:1px}
 @media (max-width:1100px){ .main.dash3{grid-template-columns:1fr 1fr;grid-auto-rows:minmax(280px,1fr)} }
-@media (max-width:1500px){ .main.dash4{grid-template-columns:310px 1.2fr 1fr 0.8fr} }
+@media (max-width:1500px){ .main.dash4{grid-template-columns:350px 1.18fr 1fr 0.78fr} }
 @media (max-width:1100px){ .main.dash4{grid-template-columns:1fr 1fr;grid-auto-rows:minmax(280px,1fr)} }
 /* ===== 모바일(폰) — 한 화면에 한 패널 + 하단 탭 ===== */
 .mobilenav{display:none}
@@ -969,6 +969,16 @@ padding:7px 16px;overflow-x:auto;align-items:center;white-space:nowrap}
 .ce-dt{font-family:var(--mono);font-size:11px;color:var(--teal);flex:none}
 .ce-note{font-size:13px;color:var(--muted);padding:18px 4px;line-height:1.6;text-align:center}
 .ce-attr{font-size:10px;color:var(--muted);margin-top:12px;line-height:1.5;padding-top:10px;border-top:1px solid var(--line)}
+/* 기업이벤트 플로팅 창(드래그 이동·축소) */
+.floatwrap{position:fixed;inset:0;z-index:90;pointer-events:none}
+.ce-float{pointer-events:auto;position:fixed;left:50%;top:80px;transform:translateX(-50%);
+  box-shadow:0 18px 50px rgba(0,0,0,.5);max-height:78vh;display:flex;flex-direction:column;overflow:hidden}
+.ce-float.ce-min{max-height:none}
+.ce-drag{cursor:move;user-select:none;display:flex;align-items:center;justify-content:space-between}
+.ce-winbtns{display:flex;gap:4px}
+.ce-winbtn{background:var(--panel3);border:1px solid var(--line2);color:var(--ink2);width:28px;height:26px;border-radius:6px;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1}
+.ce-winbtn:hover{background:var(--panel);color:var(--ink)}
+.ce-float .ce-body{flex:1;min-height:0}
 .ixdemo{font-size:10px;color:var(--amber);border:1px solid var(--amber-d);border-radius:4px;
 padding:1px 6px;margin-left:8px}
 .btn.cafe{background:#03c75a;border-color:#03c75a;color:#fff;text-decoration:none;
@@ -1297,7 +1307,7 @@ glossaryOpen: false, glossary: null, glossQ: "", glossCat: "전체", dguideOpen:
 startOpen: false, startGuide: null, startTab: "guide",
 stock: null, stockLoading: false, live: null, newsTs: "",
 feedDisc: null, feedNews: null, feedReports: null, feedPolicy: null, modal: false, reports: null, reportsLoading: false,
-chat: [], chatLastId: 0, chatUser: "익명", reacts: {}, indices: null, fx: null, corpOpen: false, corpTab: "dividend", corpData: null, recsCache: {},
+chat: [], chatLastId: 0, chatUser: "익명", reacts: {}, indices: null, fx: null, corpOpen: false, corpTab: "dividend", corpData: null, corpMin: false, corpPos: null, recsCache: {},
 notice: "", emojiOpen: false, briefing: null, briefingOpen: false, presence: {site:0,chat:0},
 mflowOpen: false, mflow: null, mflowMkt: "KOSPI",
 boardOpen: false, board: null, boardWriting: false,
@@ -2052,10 +2062,21 @@ else {
   body='<div class="ce-list">'+rows+'</div>'+
     '<div class="ce-attr">'+esc(d.attribution||"")+'<br>'+esc(d.note||"")+'</div>';
 }
-return '<div class="modalwrap" data-action="corp-close"><div class="modal" data-stop="1" style="max-width:560px">'+
-  '<div class="modal-h"><b>💰 기업 이벤트</b><button class="modal-x" data-action="corp-close">✕</button></div>'+
-  '<div class="ce-tabs">'+tabs+'</div>'+
-  '<div class="ce-body">'+body+'</div>'+
+var mini=state.corpMin?' ce-min':'';
+var pos=state.corpPos;
+var style='max-width:560px;width:560px;'+
+  (pos?('position:fixed;left:'+pos.x+'px;top:'+pos.y+'px;margin:0;transform:none;'):'');
+// 플로팅 창: 헤더를 잡고 드래그 이동, ⊟ 축소 / ⊡ 확장
+return '<div class="floatwrap'+mini+'"><div class="modal ce-float'+mini+'" data-stop="1" style="'+style+'">'+
+  '<div class="modal-h ce-drag" data-action="corp-dragstart"><b>💰 기업 이벤트</b>'+
+    '<span class="ce-winbtns">'+
+      '<button class="ce-winbtn" data-action="corp-min" title="'+(state.corpMin?'확장':'축소')+'">'+(state.corpMin?'⊡':'⊟')+'</button>'+
+      '<button class="ce-winbtn" data-action="corp-close" title="닫기">✕</button>'+
+    '</span></div>'+
+  (state.corpMin?'':(
+    '<div class="ce-tabs">'+tabs+'</div>'+
+    '<div class="ce-body">'+body+'</div>'
+  ))+
   '</div></div>';
 }
 function startGuideModalHTML(){
@@ -3679,6 +3700,39 @@ var v=e.target.value;
 nameTimer=setTimeout(function(){ saveChatName(v.trim()||"익명"); }, 400);
 }
 });
+// ── 기업이벤트 창 드래그 이동 ──
+(function(){
+  var drag=null;
+  function down(e){
+    var h=e.target.closest && e.target.closest(".ce-drag");
+    if(!h) return;
+    if(e.target.closest(".ce-winbtn")) return;   // 버튼 클릭은 드래그 아님
+    var win=h.closest(".ce-float"); if(!win) return;
+    var r=win.getBoundingClientRect();
+    var pt=e.touches?e.touches[0]:e;
+    drag={win:win, dx:pt.clientX-r.left, dy:pt.clientY-r.top};
+    win.style.transition="none";
+    e.preventDefault();
+  }
+  function move(e){
+    if(!drag) return;
+    var pt=e.touches?e.touches[0]:e;
+    var x=pt.clientX-drag.dx, y=pt.clientY-drag.dy;
+    // 화면 밖으로 완전히 안 나가게 약간 제한
+    x=Math.max(-200,Math.min(x,(window.innerWidth||1000)-80));
+    y=Math.max(0,Math.min(y,(window.innerHeight||800)-40));
+    drag.win.style.position="fixed"; drag.win.style.margin="0"; drag.win.style.transform="none";
+    drag.win.style.left=x+"px"; drag.win.style.top=y+"px";
+    if(typeof state!=="undefined"){ state.corpPos={x:Math.round(x),y:Math.round(y)}; }
+  }
+  function up(){ drag=null; }
+  document.addEventListener("mousedown",down);
+  document.addEventListener("mousemove",move);
+  document.addEventListener("mouseup",up);
+  document.addEventListener("touchstart",down,{passive:false});
+  document.addEventListener("touchmove",move,{passive:false});
+  document.addEventListener("touchend",up);
+})();
 document.addEventListener("click",function(e){
 var t=e.target.closest?e.target.closest("[data-action]"):null; if(!t) return;
 var a=t.getAttribute("data-action");
@@ -3695,10 +3749,11 @@ else { r[emo]=(r[emo]||0)+1; r[meKey]=true; }
 var cb=document.getElementById("chatbody"); if(cb) cb.innerHTML=chatMsgsHTML();
 }
 else if(a==="corpevents"){
-  state.corpOpen=true; state.corpTab=state.corpTab||"dividend"; render();
+  state.corpOpen=true; state.corpMin=false; state.corpTab=state.corpTab||"dividend"; render();
   loadCorpEvents(state.corpTab);
 }
-else if(a==="corp-close"){ if(t.getAttribute("data-stop"))return; state.corpOpen=false; render(); }
+else if(a==="corp-close"){ state.corpOpen=false; render(); }
+else if(a==="corp-min"){ state.corpMin=!state.corpMin; render(); }
 else if(a==="corp-tab"){
   state.corpTab=t.getAttribute("data-t"); render(); loadCorpEvents(state.corpTab);
 }
