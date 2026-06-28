@@ -172,10 +172,12 @@ background:linear-gradient(135deg,var(--panel2),var(--panel));border:1px solid v
 .cal-title{font-size:15px;font-weight:800;color:var(--ink);letter-spacing:-.3px}
 .cal-nav{background:var(--bg);border:1px solid var(--line2);color:var(--ink2);width:30px;height:30px;border-radius:9px;cursor:pointer;font-size:17px;line-height:1;transition:all .15s}
 .cal-nav:hover{border-color:var(--teal);color:var(--teal);transform:scale(1.05)}
-.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
-.cal-dcell{text-align:center;font-size:10px;font-weight:600;color:var(--muted);padding:2px 0 4px;align-self:center}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+/* 항상 6주 고정: 요일헤더(auto) + 날짜 6줄(균등 고정). 매달 달력 크기 동일 */
+.cal-grid-6w{grid-template-rows:auto repeat(6,1fr)}
+.cal-dcell{text-align:center;font-size:11px;font-weight:600;color:var(--muted);padding:2px 0 5px;align-self:center}
 .cal-dcell.sun{color:#ff7a7a}.cal-dcell.sat{color:#6fa8ff}
-.cal-cell{position:relative;min-height:34px;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:7px;font-size:12px;color:var(--ink2);transition:background .12s,transform .12s}
+.cal-cell{position:relative;min-height:42px;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:8px;font-size:13px;color:var(--ink2);transition:background .12s,transform .12s}
 .cal-cell.empty{background:transparent}
 .cal-cell.has{cursor:pointer;background:var(--panel);border:1px solid var(--line)}
 .cal-cell.has:hover{background:var(--panel3);transform:translateY(-1px);box-shadow:0 3px 8px rgba(0,0,0,.15)}
@@ -185,9 +187,9 @@ background:linear-gradient(135deg,var(--panel2),var(--panel));border:1px solid v
 .cal-cell.today{background:var(--teal);box-shadow:0 2px 10px rgba(80,200,190,.35)}
 .cal-cell.today .cal-num{color:#04201d;font-weight:800}
 .cal-cell.today .cal-dot{box-shadow:0 0 0 1.5px rgba(255,255,255,.7)}
-.cal-num{font-size:12px;font-weight:600}
+.cal-num{font-size:13px;font-weight:600}
 .cal-dots{display:flex;gap:2px;margin-top:2px}
-.cal-dot{width:5px;height:5px;border-radius:50%;display:inline-block}
+.cal-dot{width:6px;height:6px;border-radius:50%;display:inline-block}
 .cal-dot.holiday{background:#ff5b5b}.cal-dot.expiry{background:#e7ad48}
 .cal-dot.dividend{background:#7fe6b0}.cal-dot.custom{background:#6fa8ff}
 .cal-dot.econ{background:#c98bff}.cal-dot.disclosure{background:#f0a868}.cal-dot.filing{background:#5b9dff}.cal-dot.global{background:#4db8e8}
@@ -299,10 +301,10 @@ gap:1px;background:var(--line);overflow:hidden}
 .main.dash{grid-template-columns:208px 1fr}
 @media (max-width:1400px){ .main.dash{grid-template-columns:188px 1fr} }
 /* 새 4컬럼: 스크리너 | 리포트 | 공시 | (뉴스+채팅 세로) — 종류별 비율 */
-.main.dash4{grid-template-columns:280px 1.28fr 1.02fr 0.8fr;gap:1px}
+.main.dash4{grid-template-columns:340px 1.2fr 0.98fr 0.78fr;gap:1px}
 .main.dash3{display:grid;grid-template-columns:1.4fr 1.05fr 0.85fr;gap:1px}
 @media (max-width:1100px){ .main.dash3{grid-template-columns:1fr 1fr;grid-auto-rows:minmax(280px,1fr)} }
-@media (max-width:1500px){ .main.dash4{grid-template-columns:250px 1.25fr 1fr 0.82fr} }
+@media (max-width:1500px){ .main.dash4{grid-template-columns:310px 1.2fr 1fr 0.8fr} }
 @media (max-width:1100px){ .main.dash4{grid-template-columns:1fr 1fr;grid-auto-rows:minmax(280px,1fr)} }
 /* ===== 모바일(폰) — 한 화면에 한 패널 + 하단 탭 ===== */
 .mobilenav{display:none}
@@ -1793,7 +1795,10 @@ cells+='<div class="cal-cell'+(isToday?' today':'')+(hol?' holiday':'')+(dow===0
 (evs.length?(' data-action="cal-day" data-d="'+ds+'"'):'')+'>'+
 '<span class="cal-num">'+d+'</span>'+(dots?'<span class="cal-dots">'+dots+'</span>':'')+'</div>';
 }
-var grid='<div class="cal-grid">'+cells+'</div>';
+// 4) 뒤 빈칸 — 항상 6주(42칸)로 채워 매달 달력 크기를 동일하게(패널 고정)
+var filled=startDow+daysInMonth;
+for(var t=filled;t<42;t++){ cells+='<div class="cal-cell empty"></div>'; }
+var grid='<div class="cal-grid cal-grid-6w">'+cells+'</div>';
 // 이벤트 리스트(이번 달 전체)
 var listItems='';
 if(c && c.year===y && c.month===m && filteredEvents.length){
