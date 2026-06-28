@@ -1565,6 +1565,28 @@ def register_routes(app: Any, ctx: Any) -> None:
     def corp_lockup() -> dict:
         return _corp_events("lockup", {})
 
+    @app.get("/api/corp/diag")
+    def corp_diag(request: Request) -> dict:
+        """운영자용 진단 — 각 엔드포인트를 실제 호출해 성공/실패를 점검.
+        DATA_GO_KR_KEY 발급 후 주소가 맞는지 확인하는 용도. 키 값은 노출 안 함."""
+        if not _is_admin(request):
+            return {"ok": False, "error": "운영자 토큰이 필요합니다(x-admin-token)."}
+        prov = getattr(ctx, "public_data", None)
+        if prov is None:
+            return {"ok": False, "error": "DATA_GO_KR_KEY 가 설정되지 않았습니다.",
+                    "hint": "Render Environment 에 DATA_GO_KR_KEY 를 넣고 재배포하세요."}
+        results = []
+        for kind in ["dividend", "rights", "treasury", "lockup", "corp"]:
+            try:
+                results.append(prov.diagnose(kind))
+            except Exception as e:
+                results.append({"kind": kind, "ok": False, "reason": str(e)})
+        alive = sum(1 for r in results if r.get("ok"))
+        return {"ok": True, "alive": alive, "total": len(results), "results": results,
+                "hint": "ok=false 면 해당 종류의 정확한 URL을 공공데이터포털 Swagger 명세에서 "
+                        "확인해 환경변수(RECO_CORP_EP_DIVIDEND 등)로 덮어쓰거나 "
+                        "app/providers/public_data.py 의 ENDPOINTS 를 수정하세요."}
+
     @app.get("/api/feed/news")
     def feed_news(limit: int = 40) -> dict:
         _market_news_refresh(6)
