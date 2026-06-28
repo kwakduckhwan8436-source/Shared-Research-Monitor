@@ -308,6 +308,9 @@ gap:1px;background:var(--line);overflow:hidden}
 /* ===== 모바일(폰) — 한 화면에 한 패널 + 하단 탭 ===== */
 .mobilenav{display:none}
 @media (max-width:760px){
+/* ★★ 모바일 스크롤 근본 해결: #root의 화면높이 고정·overflow:hidden 해제 → 페이지 전체가 스크롤됨 */
+html,body{height:auto !important;min-height:100%;overflow-y:auto !important;-webkit-overflow-scrolling:touch}
+#root{height:auto !important;min-height:100vh;overflow:visible !important;display:block !important}
 .main.dash4, .main.dash3{display:block;overflow:visible}
 .mpane{display:none !important}
 .main.mtab-cal .mpane[data-pane="cal"],
