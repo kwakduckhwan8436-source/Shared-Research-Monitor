@@ -1,0 +1,6 @@
+# ads.txt — Google AdSense 인증용
+# 이 파일을 도메인 루트(예: https://내도메인.com/ads.txt)에 그대로 배치하세요.
+# pub-XXXXXXXXXXXXXXXX 를 본인 AdSense 게시자 ID로 바꾸세요.
+# (AdSense → 계정 → 설정 → 게시자 ID 에서 확인)
+
+google.com, pub-XXXXXXXXXXXXXXXX, DIRECT, f08c47fec0942fa0
