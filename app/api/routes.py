@@ -173,6 +173,11 @@ def register_routes(app: Any, ctx: Any) -> None:
                 "universe_size": len(ctx.search_universe or ctx.universe), "scan_limit": SCAN,
                 "ssot_size": ctx.ssot.size(), "snapshot_id": ctx.ssot.snapshot_id(),
                 "cafe_url": ctx.config.cafe_url, "cafe_name": ctx.config.cafe_name,
+                # 키 인식 여부만 노출(값은 절대 안 나감 — 보안)
+                "dart_key_set": bool(getattr(ctx.config, "dart_api_key", "")),
+                "naver_key_set": bool(getattr(ctx.config, "naver_client_id", "")
+                                      and getattr(ctx.config, "naver_client_secret", "")),
+                "policy_news": bool(getattr(ctx, "policy_news", None)),
                 "market_holidays": all_holiday_dates(),
                 "llm": "anthropic" if ctx.llm_client else "offline"}
 
