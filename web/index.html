@@ -3187,7 +3187,11 @@ clearTimeout(feedTimer); clearInterval(repTimer); clearInterval(chatTimer); clea
 feedTimer=repTimer=chatTimer=ixTimer=mktTimer=regimeTimer=noticeTimer=feedNewsTimer=scrTimer=null;
 mktTimer=setInterval(updateMktPill, 30000);   // 장 상태 30초 갱신(시간 기반, 모드 무관)
 if(state.mode==="sample") return;
-scheduleFeeds(); pollNewsFeed(); pollPolicyFeed(); pollReports(); pollChat(); pollIndices(); pollRegime(); pollNotice();   // 접속자는 pollChat 응답에 포함
+// 즉시 보이는 것 먼저(공시·캘린더·뉴스·채팅), 덜 급한 것은 살짝 뒤로 분산 → 첫 화면 부드럽게
+scheduleFeeds(); pollNewsFeed(); pollChat(); pollNotice();
+setTimeout(function(){ pollPolicyFeed(); }, 400);     // 정책 피드 0.4초 뒤
+setTimeout(function(){ pollReports(); }, 700);        // 리포트 0.7초 뒤
+pollIndices(); pollRegime();                          // 공개모드면 즉시 반환(부담 적음)
 feedNewsTimer=setInterval(pollNewsFeed, 10000);  // 실시간 뉴스 10초(해외장 시간에도 빠르게)
 setInterval(pollPolicyFeed, 600000);             // 정부정책 10분(자주 안 바뀜)
 repTimer=setInterval(pollReports, 45000);   // 리포트 45초
