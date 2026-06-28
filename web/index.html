@@ -1301,7 +1301,7 @@ function evKo(k){ return EV_KO[k]||k; }
 var state = {
 horizon: "swing", scrMode: "foreign", scrMarket: "", scrData: null, data: null, sel: null, view: "evidence",
 explanation: "", explLoading: false, diag: null, diagLoading: false,
-legalDoc: null, adminOpen: false, adminToken: (function(){try{return localStorage.getItem("reco_admin_tok")||null;}catch(e){return null;}})(), adminReports: null, adminBanned: null, adminStats: null, policyDiag: null, corpDiag: null,
+legalDoc: null, adminOpen: false, adminToken: (function(){try{return localStorage.getItem("reco_admin_tok")||null;}catch(e){return null;}})(), adminReports: null, adminBanned: null, adminStats: null, policyDiag: null, corpDiag: null, calCov: null,
 cal: null, calY: 0, calM: 0, calFilter: {}, calAdminOpen: false, calAdminList: null, mTab: "cal",
 glossaryOpen: false, glossary: null, glossQ: "", glossCat: "전체", dguideOpen: false, dguide: null,
 startOpen: false, startGuide: null, startTab: "guide",
@@ -1832,7 +1832,7 @@ var legend='<div class="cal-legend">'+
 '<span><span class="cal-dot econ"></span>금리·지표</span>'+
 '<span><span class="cal-dot disclosure"></span>공시</span>'+
 '<span><span class="cal-dot filing"></span>법정기한</span>'+
-'<span><span class="cal-dot global"></span>미국휴장</span>'+
+'<span><span class="cal-dot global"></span>해외증시·중앙은행</span>'+
 '<span><span class="cal-dot custom"></span>기타</span>'+
 '</div>';
 // 이번 주 요약 배너
@@ -1846,7 +1846,7 @@ return '<div class="cal-week-r"><span class="cal-week-d '+e.type+'">'+dd+'</span
 }
 // 공시 유형 필터 칩
 state.calFilter = state.calFilter || {};
-var FILTERS=[['holiday','휴장'],['expiry','만기'],['dividend','배당락'],['econ','금리·지표'],['filing','법정기한'],['global','미국휴장'],['disclosure','공시'],['custom','기타']];
+var FILTERS=[['holiday','휴장'],['expiry','만기'],['dividend','배당락'],['econ','금리·지표'],['filing','법정기한'],['global','해외증시·중앙은행'],['disclosure','공시'],['custom','기타']];
 var filterBar='<div class="cal-filter">'+FILTERS.map(function(f){
 var off=state.calFilter[f[0]];
 return '<button class="cal-fchip '+f[0]+(off?' off':'')+'" data-action="cal-filter" data-f="'+f[0]+'">'+f[1]+'</button>';
@@ -2167,6 +2167,10 @@ admStatsHTML()+
 '<div class="adm-banned"><div class="adm-sec">기업이벤트(공공데이터) 점검</div>'+
 (state.corpDiag!=null ? corpDiagHTML() :
 '<button class="adm-sbtn" data-action="corp-diag">기업이벤트 API 점검(배당·증자·자사주·보호예수)</button>')+
+'</div>'+
+'<div class="adm-banned"><div class="adm-sec">캘린더 일정 점검(연 1회 갱신 확인)</div>'+
+(state.calCov!=null ? calCovHTML() :
+'<button class="adm-sbtn" data-action="cal-coverage">캘린더 내장 일정이 어느 해까지 있는지 점검</button>')+
 '</div>';
 }
 return '<div class="modalwrap" data-action="admin-close"><div class="modal adminmodal" data-stop="1">'+
@@ -3378,6 +3382,26 @@ body:JSON.stringify({events:state.calAdminList||[]})})
 .then(function(r){return r.json();}).then(function(){ render(); loadCalendar(); })
 .catch(function(){ alert("저장 실패"); });
 }
+function calCovHTML(){
+var d=state.calCov;
+if(!d) return '<div class="adm-empty">점검 결과 없음</div>';
+if(d.loading) return '<div class="adm-load">점검 중…</div>';
+if(d.error) return '<div class="pd-err">'+esc(d.error)+'</div>'+
+  '<button class="adm-sbtn" data-action="cal-coverage">다시 점검</button>';
+var rows=(d.groups||[]).map(function(g){
+var ok=g.last_year>=(new Date()).getFullYear();
+var badge=ok?'<span class="pd-ok">● ~'+g.last_year+'년 ('+g.count+'건)</span>':'<span class="pd-bad">● 갱신 필요</span>';
+return '<div class="pd-row"><span class="pd-name">'+esc(g.name)+'</span>'+badge+'</div>';
+}).join('');
+var auto=(d.auto_computed||[]).map(function(x){return esc(x);}).join(', ');
+var warn=d.need_update?'<div class="pd-err" style="margin:8px 0">⚠ '+esc(d.hint)+'</div>':
+  '<div class="pd-summary">✓ '+esc(d.hint)+'</div>';
+return warn+
+'<div class="pd-list">'+rows+'</div>'+
+'<div class="adm-note"><b>자동 갱신(영구):</b> '+auto+' — 이 항목들은 규칙 기반이라 매년 자동입니다.<br>'+
+'<b>연 1회 갱신 필요:</b> 위 목록 중 \'갱신 필요\'는 다음 해 일정을 app/core/econ_events.py 에 추가하세요.</div>'+
+'<button class="adm-sbtn" data-action="cal-coverage">다시 점검</button>';
+}
 function corpDiagHTML(){
 var d=state.corpDiag;
 if(!d) return '<div class="adm-empty">점검 결과 없음</div>';
@@ -3791,6 +3815,12 @@ state.corpDiag={loading:true}; render();
 fetch(API+"/api/corp/diag",{headers:{"x-admin-token":state.adminToken||""}})
 .then(function(r){return r.json();}).then(function(j){ state.corpDiag=j; render(); })
 .catch(function(){ state.corpDiag={error:"점검 실패(네트워크)"}; render(); });
+}
+else if(a==="cal-coverage"){
+state.calCov={loading:true}; render();
+fetch(API+"/api/calendar/coverage",{headers:{"x-admin-token":state.adminToken||""}})
+.then(function(r){return r.json();}).then(function(j){ state.calCov=j; render(); })
+.catch(function(){ state.calCov={error:"점검 실패(네트워크)"}; render(); });
 }
 else if(a==="admin-stats-load"){
 fetch(API+"/api/admin/stats?days=7",{headers:{"x-admin-token":state.adminToken||""}})
