@@ -1,5 +1,5 @@
 /* 서비스워커 — 정적 셸만 캐시. API 데이터는 항상 네트워크에서 최신을 받는다. */
-const CACHE = "reco-static-v1";
+const CACHE = "reco-static-v2";
 const STATIC_ASSETS = ["/", "/index.html", "/manifest.json", "/icon-192.png", "/icon-512.png"];
 
 self.addEventListener("install", (e) => {
