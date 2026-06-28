@@ -122,6 +122,11 @@ class Config:
     # 네이버 뉴스 검색 API(실시간 언론 기사, 선택). developers.naver.com 발급.
     naver_client_id: str = os.getenv("NAVER_CLIENT_ID", "")
     naver_client_secret: str = os.getenv("NAVER_CLIENT_SECRET", "")
+    # 공공데이터포털(data.go.kr) 서비스키 — 공시일정/주식발행/기업정보 등 금융 공공데이터.
+    # 무료 발급. 공공누리 유형은 데이터별로 다르니 상업적 이용 시 각 데이터 약관 확인.
+    data_go_key: str = os.getenv("DATA_GO_KR_KEY", "")
+    # 한국수출입은행 환율 API 키(선택). oapi.koreaexim.go.kr 무료 발급.
+    exim_key: str = os.getenv("EXIM_API_KEY", "")
 
     # live 유니버스(관심종목). 쉼표구분 "005930,000660,..." 또는 watchlist.txt(한 줄 1종목).
     watchlist: str = os.getenv("RECO_WATCHLIST", "")

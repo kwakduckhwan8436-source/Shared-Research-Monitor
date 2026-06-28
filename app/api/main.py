@@ -40,6 +40,8 @@ class AppContext:
     press_news: Optional[Any] = None
     google_news: Optional[Any] = None   # 구글 뉴스 RSS(네이버 보완)
     policy_news: Optional[Any] = None    # 정부정책 RSS(정책브리핑·부처, 공공누리)
+    public_data: Optional[Any] = None    # 공공데이터포털 금융데이터(공시일정·보호예수·기업)
+    fx: Optional[Any] = None             # 환율(한국수출입은행)
     market: Optional[Any] = None    # 해외지수/원자재/금리 provider
     dart: Optional[Any] = None      # DART provider(전체 공시 조회용)
     errors: Optional[Any] = None    # ErrorCounter(런타임 에러 모니터링)
@@ -93,6 +95,16 @@ def build_context(cfg: Optional[Config] = None) -> AppContext:
         from app.providers.policy_news import PolicyNewsProvider
         _all = os.getenv("RECO_POLICY_ALL", "0") not in ("0", "false", "False")
         policy_news = PolicyNewsProvider(all_sources=_all)
+    # 공공데이터포털 금융 데이터(공시일정·보호예수·기업정보). 서비스키 있으면 활성.
+    public_data = None
+    if cfg.data_go_key:
+        from app.providers.public_data import PublicDataProvider
+        public_data = PublicDataProvider(cfg.data_go_key)
+    # 환율(한국수출입은행). 키 있으면 활성.
+    fx = None
+    if cfg.exim_key:
+        from app.providers.exchange import ExchangeRateProvider
+        fx = ExchangeRateProvider(cfg.exim_key)
 
     if cfg.data_source == "mock":
         provider: DataProvider = ProviderRouter([MockProvider(llm_client=llm)])
@@ -449,7 +461,8 @@ def build_context(cfg: Optional[Config] = None) -> AppContext:
     return AppContext(cfg, clock, bus, ssot, store, provider, service, verdict,
                       llm, resolver, universe, realtime=realtime, quote=quote,
                       press_news=press_news, market=market, dart=dart_provider,
-                      google_news=google_news, policy_news=policy_news, errors=ErrorCounter(),
+                      google_news=google_news, policy_news=policy_news,
+                      public_data=public_data, fx=fx, errors=ErrorCounter(),
                       search_universe=search_universe)
 
 

@@ -954,6 +954,20 @@ padding:7px 16px;overflow-x:auto;align-items:center;white-space:nowrap}
 .ix-up{color:#f0655d}    /* 상승 = 빨강(한국식) */
 .ix-down{color:#5a9cf8}  /* 하락 = 파랑 */
 .ix-flat{color:var(--muted)}
+.fxstrip{padding:6px 16px}
+.fxlabel{font-size:11px;font-weight:700;color:var(--teal);padding-right:14px;border-right:1px solid var(--line);margin-right:4px;flex:none}
+.fxattr{font-size:9.5px;color:var(--muted);margin-left:auto;padding-left:14px;flex:none}
+.ce-tabs{display:flex;gap:4px;padding:10px 16px 0;flex-wrap:wrap}
+.ce-tab{background:var(--panel3);border:1px solid var(--line2);color:var(--muted);border-radius:8px;padding:7px 13px;font-size:13px;cursor:pointer;font-weight:600}
+.ce-tab.on{background:rgba(45,212,191,.15);border-color:var(--teal);color:var(--teal)}
+.ce-body{padding:12px 16px 16px;max-height:60vh;overflow-y:auto}
+.ce-list{display:flex;flex-direction:column;gap:2px}
+.ce-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.ce-nm{font-size:14px;font-weight:600;color:var(--ink);flex:1;min-width:0}
+.ce-sub{font-size:11.5px;color:var(--muted);flex:none;max-width:45%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ce-dt{font-family:var(--mono);font-size:11px;color:var(--teal);flex:none}
+.ce-note{font-size:13px;color:var(--muted);padding:18px 4px;line-height:1.6;text-align:center}
+.ce-attr{font-size:10px;color:var(--muted);margin-top:12px;line-height:1.5;padding-top:10px;border-top:1px solid var(--line)}
 .ixdemo{font-size:10px;color:var(--amber);border:1px solid var(--amber-d);border-radius:4px;
 padding:1px 6px;margin-left:8px}
 .btn.cafe{background:#03c75a;border-color:#03c75a;color:#fff;text-decoration:none;
@@ -1282,7 +1296,7 @@ glossaryOpen: false, glossary: null, glossQ: "", glossCat: "전체", dguideOpen:
 startOpen: false, startGuide: null, startTab: "guide",
 stock: null, stockLoading: false, live: null, newsTs: "",
 feedDisc: null, feedNews: null, feedReports: null, feedPolicy: null, modal: false, reports: null, reportsLoading: false,
-chat: [], chatLastId: 0, chatUser: "익명", reacts: {}, indices: null, recsCache: {},
+chat: [], chatLastId: 0, chatUser: "익명", reacts: {}, indices: null, fx: null, corpOpen: false, corpTab: "dividend", corpData: null, recsCache: {},
 notice: "", emojiOpen: false, briefing: null, briefingOpen: false, presence: {site:0,chat:0},
 mflowOpen: false, mflow: null, mflowMkt: "KOSPI",
 boardOpen: false, board: null, boardWriting: false,
@@ -1359,6 +1373,7 @@ return '<div class="top">'+
 '<button class="btn" data-action="board">🐞 게시판</button>'+
 '<button class="btn" data-action="glossary">📖 용어사전</button>'+
 '<button class="btn" data-action="dguide">📑 공시읽기</button>'+
+'<button class="btn" data-action="corpevents">💰 기업이벤트</button>'+
 '<button class="btn" data-action="startguide">🚀 주식입문</button>'+
 '<span class="meta-divider"></span>'+
 (h&&h.cafe_url ? '<a class="btn cafe" href="'+esc(h.cafe_url)+'" target="_blank" rel="noopener" title="'+esc(h.cafe_name||"내 카페")+'">☕ 카페</a>' : '')+
@@ -1999,6 +2014,44 @@ return '<div class="modalwrap" data-action="dguide-close"><div class="modal glos
 '<div class="gloss-list">'+body+'</div>'+
 '<div class="note" style="padding:10px 16px">전자공시(DART) 유형을 쉽게 이해하기 위한 자체 작성 가이드입니다. 투자 판단의 근거가 아닙니다.</div>'+
 '</div></div>';
+}
+function corpEventsModalHTML(){
+if(!state.corpOpen) return '';
+var TABS=[["dividend","💵 배당"],["rights","📈 증자"],["treasury","🔁 자사주"],["lockup","🔓 보호예수"]];
+var cur=state.corpTab||"dividend";
+var tabs=TABS.map(function(t){
+  return '<button class="ce-tab'+(cur===t[0]?" on":"")+'" data-action="corp-tab" data-t="'+t[0]+'">'+t[1]+'</button>';
+}).join("");
+var d=state.corpData&&state.corpData[cur];
+var body;
+if(!d){ body='<div class="adm-load">불러오는 중…</div>'; }
+else if(d.note && (!d.items||!d.items.length) && !d.error){
+  body='<div class="ce-note">'+esc(d.note)+'</div>';
+}
+else if(d.error || !d.items || !d.items.length){
+  body='<div class="ce-note">'+esc(d.error||"자료가 없습니다.")+'</div>';
+}
+else {
+  // 공공데이터 응답은 필드명이 데이터마다 달라, 회사명/일자/내용 후보를 유연하게 추출
+  var rows=d.items.map(function(it){
+    var nm=it.corpNm||it.stckIssuCmpyNm||it.issucoNm||it.isuNm||it.itmsNm||it.corp_name||it.fncoNm||"-";
+    var dt=it.basDt||it.rcptDt||it.rceptDt||it.listDt||it.scsbpDt||it.dividDt||it.rtrnDt||"";
+    var extra=it.stockKindNm||it.scstaNm||it.purpose||it.rtrnRsn||it.dividRate||it.st, ex="";
+    // 보기 좋은 보조 정보 후보
+    var sub=it.dividRate?("배당률 "+it.dividRate):(it.rtrnRsn?("사유: "+it.rtrnRsn):(it.purpose||it.scstaNm||""));
+    if(dt&&dt.length===8) dt=dt.slice(0,4)+"-"+dt.slice(4,6)+"-"+dt.slice(6,8);
+    return '<div class="ce-row"><div class="ce-nm">'+esc(nm)+'</div>'+
+      (sub?'<div class="ce-sub">'+esc(String(sub))+'</div>':'')+
+      (dt?'<div class="ce-dt">'+esc(dt)+'</div>':'')+'</div>';
+  }).join("");
+  body='<div class="ce-list">'+rows+'</div>'+
+    '<div class="ce-attr">'+esc(d.attribution||"")+'<br>'+esc(d.note||"")+'</div>';
+}
+return '<div class="modalwrap" data-action="corp-close"><div class="modal" data-stop="1" style="max-width:560px">'+
+  '<div class="modal-h"><b>💰 기업 이벤트</b><button class="modal-x" data-action="corp-close">✕</button></div>'+
+  '<div class="ce-tabs">'+tabs+'</div>'+
+  '<div class="ce-body">'+body+'</div>'+
+  '</div></div>';
 }
 function startGuideModalHTML(){
 if(!state.startOpen) return '';
@@ -2762,6 +2815,16 @@ return '<div class="demobar">⚠ '+why+
 ' 실시간으로 보려면 <b>.env 에 RECO_DATA_SOURCE=live</b> 로 바꾸고 KIS/DART/네이버 키를 넣은 뒤 '+
 '<b>라이브_실행.bat</b>(또는 <span class="mono">python launch.py live</span>)으로 실행하세요.</div>';
 }
+function fxStripHTML(){
+  var fx = state.fx;
+  if(!fx || !fx.rates || !fx.rates.length) return "";
+  var cells = fx.rates.map(function(r,i){
+    return '<div class="ixitem'+(i>0?" ixsep":"")+'"><span class="ixname">'+esc(r.name)+'</span>'+
+      '<span class="ixval">'+(r.rate||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})+'</span></div>';
+  }).join("");
+  return '<div class="ixstrip fxstrip"><span class="fxlabel">💱 환율</span>'+cells+
+    '<span class="fxattr">'+esc(fx.date||"")+' · 한국수출입은행</span></div>';
+}
 function indexStripHTML(){
 var ix = state.indices;
 if(!ix) return "";
@@ -2787,6 +2850,7 @@ var items = (state.scrData&&state.scrData.items)||[];
 document.getElementById("root").innerHTML =
 topHTML()+
 '<div id="ixbar">'+indexStripHTML()+'</div>'+
+'<div id="fxbar">'+fxStripHTML()+'</div>'+
 modeBanner()+
 (state.msg?'<div class="msg">'+esc(state.msg)+'</div>':"")+
 '<div class="main dash4 mtab-'+(state.mTab||'cal')+'">'+
@@ -2820,6 +2884,7 @@ calAdminModalHTML()+
 glossaryModalHTML()+
 dguideModalHTML()+
 startGuideModalHTML()+
+corpEventsModalHTML()+
 toastHTML();
 }
 // ---------- data ----------
@@ -3205,6 +3270,8 @@ scheduleFeeds(); pollNewsFeed(); pollChat(); pollNotice();
 setTimeout(function(){ pollPolicyFeed(); }, 400);     // 정책 피드 0.4초 뒤
 setTimeout(function(){ pollReports(); }, 700);        // 리포트 0.7초 뒤
 pollIndices(); pollRegime();                          // 공개모드면 즉시 반환(부담 적음)
+setTimeout(function(){ pollFx(); }, 500);             // 환율(안전한 공공 시세) 0.5초 뒤
+setInterval(pollFx, 1800000);                        // 환율 30분
 feedNewsTimer=setInterval(pollNewsFeed, 10000);  // 실시간 뉴스 10초(해외장 시간에도 빠르게)
 setInterval(pollPolicyFeed, 600000);             // 정부정책 10분(자주 안 바뀜)
 repTimer=setInterval(pollReports, 45000);   // 리포트 45초
@@ -3221,6 +3288,21 @@ getJSON("/api/indices").then(function(j){
 state.indices=j;
 var el=document.getElementById("ixbar"); if(el) el.innerHTML=indexStripHTML();
 }).catch(function(){});
+}
+function pollFx(){
+if(state.mode==="sample") return;
+getJSON("/api/fx").then(function(j){
+state.fx=j;
+var el=document.getElementById("fxbar"); if(el) el.innerHTML=fxStripHTML();
+}).catch(function(){});
+}
+function loadCorpEvents(kind){
+var ep={dividend:"/api/corp/dividend",rights:"/api/corp/rights",treasury:"/api/corp/treasury",lockup:"/api/corp/lockup"}[kind];
+if(!ep) return;
+state.corpData=state.corpData||{};
+if(state.corpData[kind]) { return; }  // 이미 로드됨(캐시)
+getJSON(ep).then(function(j){ state.corpData[kind]=j; if(state.corpOpen) render(); })
+  .catch(function(){ state.corpData[kind]={items:[],error:"불러오기 실패"}; if(state.corpOpen) render(); });
 }
 // ---------- 채팅 폴링/전송 ----------
 function patchChat(){
@@ -3606,6 +3688,14 @@ if(r[meKey]){ r[emo]=Math.max(0,(r[emo]||0)-1); r[meKey]=false; }
 else { r[emo]=(r[emo]||0)+1; r[meKey]=true; }
 // 채팅 본문만 다시 그려 깜빡임 최소화
 var cb=document.getElementById("chatbody"); if(cb) cb.innerHTML=chatMsgsHTML();
+}
+else if(a==="corpevents"){
+  state.corpOpen=true; state.corpTab=state.corpTab||"dividend"; render();
+  loadCorpEvents(state.corpTab);
+}
+else if(a==="corp-close"){ if(t.getAttribute("data-stop"))return; state.corpOpen=false; render(); }
+else if(a==="corp-tab"){
+  state.corpTab=t.getAttribute("data-t"); render(); loadCorpEvents(state.corpTab);
 }
 else if(a==="policy-diag"){
 state.policyDiag={loading:true}; render();

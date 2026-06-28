@@ -178,6 +178,8 @@ def register_routes(app: Any, ctx: Any) -> None:
                 "naver_key_set": bool(getattr(ctx.config, "naver_client_id", "")
                                       and getattr(ctx.config, "naver_client_secret", "")),
                 "policy_news": bool(getattr(ctx, "policy_news", None)),
+                "public_data_set": bool(getattr(ctx.config, "data_go_key", "")),
+                "fx_set": bool(getattr(ctx.config, "exim_key", "")),
                 "market_holidays": all_holiday_dates(),
                 "llm": "anthropic" if ctx.llm_client else "offline"}
 
@@ -1500,6 +1502,68 @@ def register_routes(app: Any, ctx: Any) -> None:
         return {"ok": True, "alive": alive, "total": len(results), "sources": results,
                 "hint": "ok=false 인 주소는 각 부처 누리집의 'RSS' 메뉴에서 정확한 주소로 "
                         "app/providers/policy_news.py 의 SOURCES 를 수정하세요."}
+
+    # ─── 환율(한국수출입은행) ───────────────────────────────
+    _fx_cache = {"data": None, "at": 0.0}
+
+    @app.get("/api/fx")
+    def fx_rates() -> dict:
+        """환율 — 원/달러·엔·유로 등(한국수출입은행, 공공정보)."""
+        prov = getattr(ctx, "fx", None)
+        if prov is None:
+            return {"rates": [], "note": "환율은 EXIM_API_KEY 설정 시 표시됩니다.",
+                    "attribution": "출처: 한국수출입은행"}
+        now_t = _time.time()
+        # 30분 캐시(환율 고시는 자주 안 바뀜)
+        if not _fx_cache["data"] or now_t - _fx_cache["at"] > 1800:
+            try:
+                _fx_cache["data"] = prov.fetch_latest(ctx.clock.now())
+                _fx_cache["at"] = now_t
+            except Exception:
+                pass
+        return _fx_cache["data"] or {"rates": [], "attribution": "출처: 한국수출입은행",
+                                     "error": "환율을 불러오지 못했습니다."}
+
+    # ─── 기업 이벤트(공공데이터포털: 공시일정·보호예수·자사주) ───
+    _corp_event_cache = {}   # kind -> (data, at)
+
+    def _corp_events(kind: str, params: dict, ttl: int = 1800) -> dict:
+        """공공데이터포털에서 기업 이벤트를 가져와 캐시. 사실 정보만, 추천 없음."""
+        prov = getattr(ctx, "public_data", None)
+        if prov is None:
+            return {"items": [], "note": "DATA_GO_KR_KEY 설정 시 표시됩니다(공공데이터포털).",
+                    "attribution": "출처: 금융위원회·한국예탁결제원 (공공데이터포털)"}
+        now_t = _time.time()
+        cached = _corp_event_cache.get(kind)
+        if cached and now_t - cached[1] < ttl:
+            return cached[0]
+        try:
+            rows = prov.fetch(kind, params)
+        except Exception:
+            rows = []
+        out = {"items": rows[:50],
+               "attribution": "출처: 금융위원회·한국예탁결제원 (공공데이터포털 data.go.kr)",
+               "note": "공시일 기준 자료(실시간 아님). 사실 정보이며 투자권유가 아닙니다."}
+        if not rows:
+            out["error"] = "자료를 불러오지 못했습니다(키/네트워크/주말 점검)."
+        _corp_event_cache[kind] = (out, now_t)
+        return out
+
+    @app.get("/api/corp/dividend")
+    def corp_dividend() -> dict:
+        return _corp_events("dividend", {})
+
+    @app.get("/api/corp/rights")
+    def corp_rights() -> dict:
+        return _corp_events("rights", {})
+
+    @app.get("/api/corp/treasury")
+    def corp_treasury() -> dict:
+        return _corp_events("treasury", {})
+
+    @app.get("/api/corp/lockup")
+    def corp_lockup() -> dict:
+        return _corp_events("lockup", {})
 
     @app.get("/api/feed/news")
     def feed_news(limit: int = 40) -> dict:
