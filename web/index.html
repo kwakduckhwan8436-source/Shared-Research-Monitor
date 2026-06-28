@@ -313,16 +313,22 @@ gap:1px;background:var(--line);overflow:hidden}
 .main.mtab-cal .mpane[data-pane="cal"],
 .main.mtab-disc .mpane[data-pane="disc"],
 .main.mtab-news .mpane[data-pane="news"],
-.main.mtab-chat .mpane[data-pane="chat"]{display:flex !important;flex-direction:column;min-height:calc(100vh - 200px)}
+.main.mtab-chat .mpane[data-pane="chat"]{display:flex !important;flex-direction:column;min-height:auto}
 .col-screener.mpane{display:block !important}
 .main.mtab-cal .col-screener{display:block !important}
 .main:not(.mtab-cal) .col-screener.mpane{display:none !important}
 .col-stack{display:flex;flex-direction:column;gap:1px}
 /* 뉴스/정책 분할: 폰에선 위아래로 충분히 크게 */
 .col-newsstack{display:flex;flex-direction:column;gap:1px}
-.ncell-top{flex:1 1 auto;min-height:46vh}
-.ncell-bot{flex:1 1 auto;min-height:34vh}
-.scell-top,.scell-bot{min-height:44vh}
+/* ★ 모바일 스크롤 핵심: 패널 내부 스크롤을 없애고 페이지 전체가 스크롤되게 함 */
+.main.mtab-disc .mpane, .main.mtab-news .mpane,
+.col-stack, .col-newsstack,
+.scell-top, .scell-bot, .ncell-top, .ncell-bot{
+  overflow:visible !important; height:auto !important; min-height:0 !important; flex:none !important}
+.main.mtab-disc .feedbody, .main.mtab-news .feedbody{
+  overflow:visible !important; height:auto !important; flex:none !important; max-height:none !important}
+/* 캘린더/스크리너 패널도 자연 흐름 */
+.main.mtab-cal .mpane, .col-screener{overflow:visible !important; height:auto !important}
 .mobilenav{display:flex;position:fixed;bottom:0;left:0;right:0;z-index:80;
 background:var(--panel);border-top:1px solid var(--line2);padding:5px 0 max(8px,env(safe-area-inset-bottom));
 box-shadow:0 -2px 14px rgba(0,0,0,.28)}
@@ -362,6 +368,10 @@ gap:3px;padding:6px 0;cursor:pointer;color:var(--muted);min-height:48px}
 .cal-tool{font-size:12.5px;padding:9px 14px;min-height:38px}
 .col-screener{padding:13px}
 /* 채팅: 폰에서 크고 터치 쉽게 */
+/* 채팅 탭은 화면 높이에 맞춰 메시지만 내부 스크롤(입력창은 하단 고정) */
+.main.mtab-chat .mpane[data-pane="chat"]{height:calc(100vh - 180px) !important;min-height:calc(100vh - 180px) !important}
+.main.mtab-chat .chatbodywrap{flex:1 !important;min-height:0 !important;overflow:hidden}
+.main.mtab-chat .chatbody2{overflow-y:auto !important;height:auto !important;-webkit-overflow-scrolling:touch}
 .chatbar{position:sticky;bottom:0;padding:11px 12px;gap:7px}
 .chatinput{font-size:15px;padding:11px 13px;min-height:44px}
 .chatname{font-size:14px;min-height:44px}
