@@ -1,0 +1,29 @@
+# Render 배포 블루프린트 — GitHub 저장소를 연결하면 자동 인식.
+# https://render.com → New → Blueprint → 이 저장소 선택
+services:
+  - type: web
+    name: research-monitor
+    runtime: python
+    plan: free                 # 무료 플랜으로 시작(추후 변경 가능)
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "python server.py"
+    envVars:
+      - key: RECO_PUBLIC_MODE
+        value: "1"             # 공개 안전모드(시세 재배포 차단)
+      - key: RECO_DATA_SOURCE
+        value: "live"
+      - key: RECO_POLICY_NEWS
+        value: "1"             # 정부정책 RSS
+      - key: RECO_SITE_URL
+        sync: false            # 배포 후 실제 주소로 입력(sitemap/SEO용)
+      - key: RECO_ADMIN_TOKEN
+        sync: false            # 운영자 토큰(직접 입력, 비공개)
+      # ── API 키: sync:false = 코드/저장소에 저장 안 됨. Render 대시보드에서만 입력 ──
+      - key: DART_API_KEY
+        sync: false            # 전자공시(opendart.fss.or.kr 무료 발급)
+      - key: NAVER_CLIENT_ID
+        sync: false            # 네이버 뉴스(developers.naver.com 무료 발급)
+      - key: NAVER_CLIENT_SECRET
+        sync: false            # 네이버 뉴스 시크릿(절대 코드에 두지 말 것)
+      # 아래는 선택(필요 시 대시보드에서 입력)
+      # - key: RECO_ADSENSE_PUB  (애드센스 게시자 ID)
