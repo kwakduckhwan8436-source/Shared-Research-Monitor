@@ -19,6 +19,7 @@
 from __future__ import annotations
 
 import json
+import os
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
@@ -39,6 +40,24 @@ ENDPOINTS = {
     # 기업기본정보
     "corp":       BASE + "/CorpBasicInfoService/getCorpOutline",
 }
+
+# 운영자가 발급 후 Swagger 명세에서 확인한 정확한 URL로 덮어쓸 수 있다.
+# 예: RECO_CORP_EP_DIVIDEND=https://apis.data.go.kr/1160100/service/GetDisclInfoService/getDividendInfo
+_ENV_KEYS = {
+    "dividend": "RECO_CORP_EP_DIVIDEND", "rights": "RECO_CORP_EP_RIGHTS",
+    "treasury": "RECO_CORP_EP_TREASURY", "lockup": "RECO_CORP_EP_LOCKUP",
+    "corp": "RECO_CORP_EP_CORP",
+}
+
+
+def _resolve_endpoint(kind: str) -> Optional[str]:
+    """환경변수 오버라이드가 있으면 우선, 없으면 기본 ENDPOINTS."""
+    env = _ENV_KEYS.get(kind)
+    if env:
+        val = os.getenv(env, "").strip()
+        if val:
+            return val
+    return ENDPOINTS.get(kind)
 
 
 def _attribution() -> str:
@@ -108,8 +127,37 @@ class PublicDataProvider:
 
     # ---- 개별 수집(원시 dict 리스트 반환; 호출부에서 표준화) ----
     def fetch(self, kind: str, params: Optional[dict] = None) -> list[dict]:
-        ep = ENDPOINTS.get(kind)
+        ep = _resolve_endpoint(kind)
         if not ep or not self.enabled:
             return []
         text = self._fetch(ep, params or {})
         return self.parse_items(text)
+
+    def diagnose(self, kind: str, params: Optional[dict] = None) -> dict:
+        """진단: 해당 종류의 엔드포인트를 실제 호출해 성공/실패와 응답 앞부분을 돌려준다.
+        키 값은 노출하지 않는다(URL에서 serviceKey 제거)."""
+        ep = _resolve_endpoint(kind)
+        if not ep:
+            return {"kind": kind, "ok": False, "reason": "엔드포인트 미정의"}
+        if not self.enabled:
+            return {"kind": kind, "ok": False, "reason": "DATA_GO_KR_KEY 미설정"}
+        text = self._fetch(ep, params or {})
+        if text is None:
+            return {"kind": kind, "ok": False, "endpoint": ep,
+                    "reason": "응답 없음(네트워크/URL/키 점검)",
+                    "last_error": self.last_error}
+        items = self.parse_items(text)
+        # 포털 표준 에러코드 추출 시도
+        head = text.strip()[:300]
+        ok = len(items) > 0
+        result = {"kind": kind, "ok": ok, "endpoint": ep,
+                  "item_count": len(items), "sample_head": head}
+        if not ok:
+            # 흔한 실패: SERVICE_KEY_IS_NOT_REGISTERED_ERROR, NODATA_ERROR 등
+            for code in ["SERVICE_KEY", "NODATA", "LIMITED_NUMBER",
+                         "HTTP_ERROR", "INVALID", "UNREGISTERED", "DEADLINE"]:
+                if code in text.upper():
+                    result["hint"] = code + " (포털 에러코드 확인)"
+                    break
+            result.setdefault("hint", "응답은 왔으나 item이 비었습니다(주소/파라미터/날짜 확인).")
+        return result
