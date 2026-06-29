@@ -88,12 +88,22 @@ class PublicDataProvider:
     def _fetch(self, endpoint: str, params: dict) -> Optional[str]:
         if self.transport is not None:
             return self.transport(endpoint, params)
+        # serviceKey 를 제외한 파라미터만 표준 인코딩
         q = dict(params)
-        q.setdefault("serviceKey", self.key)
         q.setdefault("numOfRows", self.max_rows)
         q.setdefault("pageNo", 1)
         q.setdefault("resultType", "json")
-        url = endpoint + "?" + urllib.parse.urlencode(q, safe="%")
+        query = urllib.parse.urlencode(q)
+        # serviceKey 는 키 종류(Encoding/Decoding)를 자동 판별해 한 번만 인코딩:
+        #  · 이미 인코딩된 Encoding 키(%2B, %2F, %3D 포함)는 그대로 사용
+        #  · 원본 Decoding 키(+,/,= 포함)는 quote 로 인코딩
+        key = (self.key or "").strip()
+        if "%" in key and ("%2B" in key.upper() or "%2F" in key.upper()
+                           or "%3D" in key.upper()):
+            key_enc = key                          # 이미 인코딩된 키(그대로)
+        else:
+            key_enc = urllib.parse.quote(key, safe="")  # 원본 키 → 인코딩
+        url = endpoint + "?serviceKey=" + key_enc + "&" + query
         req = urllib.request.Request(url, headers={"User-Agent": "stock_reco/1.0"})
         try:
             with urllib.request.urlopen(req, timeout=self.timeout) as resp:
@@ -142,31 +152,65 @@ class PublicDataProvider:
         text = self._fetch(ep, params or {})
         return self.parse_items(text)
 
+    # 공공데이터포털 표준 에러코드 → 사람이 읽고 바로 행동할 진단
+    _ERROR_GUIDE = [
+        ("SERVICE_KEY_IS_NOT_REGISTERED", "register",
+         "키가 아직 등록 전입니다. 활용신청 직후라면 1시간 정도 뒤 다시 시도하세요. "
+         "또는 Encoding 키 대신 Decoding 키로 바꿔보세요."),
+        ("SERVICE KEY IS NOT REGISTERED", "register",
+         "키가 아직 등록 전입니다. 활용신청 후 1시간 대기, 또는 Decoding 키로 교체."),
+        ("NODATA", "nodata",
+         "주소·키는 정상인데 조회된 자료가 없습니다(주말/공휴일이거나 해당 조건에 데이터 없음). "
+         "평일 오후에 다시 확인하세요."),
+        ("LIMITED_NUMBER_OF_SERVICE_REQUESTS", "limit",
+         "일일 호출 한도(개발계정 1만건)를 초과했습니다. 내일 다시 시도하거나 운영계정으로 상향하세요."),
+        ("HTTP_ERROR", "http", "포털 서버 응답 오류입니다. 잠시 후 다시 시도하세요."),
+        ("INVALID_REQUEST_PARAMETER", "param",
+         "요청 파라미터가 맞지 않습니다(엔드포인트 주소나 변수명 점검 필요)."),
+        ("UNREGISTERED_IP", "ip",
+         "등록되지 않은 IP에서의 요청입니다. 마이페이지에서 IP 제한을 해제하거나 서버 IP를 등록하세요."),
+        ("DEADLINE_HAS_EXPIRED", "expired", "활용신청 기간이 만료되었습니다. 연장 신청하세요."),
+        ("SERVICE_ACCESS_DENIED", "denied",
+         "이 기능에 대한 접근 권한이 없습니다. 해당 데이터를 활용신청했는지 확인하세요."),
+    ]
+
     def diagnose(self, kind: str, params: Optional[dict] = None) -> dict:
-        """진단: 해당 종류의 엔드포인트를 실제 호출해 성공/실패와 응답 앞부분을 돌려준다.
-        키 값은 노출하지 않는다(URL에서 serviceKey 제거)."""
+        """진단: 엔드포인트를 실제 호출해 성공/실패와 '한글 해결책'을 돌려준다.
+        키 값은 노출하지 않는다."""
         ep = _resolve_endpoint(kind)
         if not ep:
-            return {"kind": kind, "ok": False, "reason": "엔드포인트 미정의"}
+            return {"kind": kind, "ok": False, "advice": "엔드포인트가 정의되지 않았습니다."}
         if not self.enabled:
-            return {"kind": kind, "ok": False, "reason": "DATA_GO_KR_KEY 미설정"}
+            return {"kind": kind, "ok": False,
+                    "advice": "DATA_GO_KR_KEY 가 설정되지 않았습니다. Render Environment 에 키를 넣으세요."}
         text = self._fetch(ep, params or {})
         if text is None:
-            return {"kind": kind, "ok": False, "endpoint": ep,
-                    "reason": "응답 없음(네트워크/URL/키 점검)",
-                    "last_error": self.last_error}
+            # 네트워크 자체 실패
+            le = (self.last_error or "")
+            advice = "서버에서 공공데이터포털로 연결하지 못했습니다(네트워크/주소 문제)."
+            if "timed out" in le or "timeout" in le.lower():
+                advice = "응답 시간 초과입니다. 잠시 후 다시 시도하세요(포털 지연 가능)."
+            elif "Name or service not known" in le or "getaddrinfo" in le:
+                advice = "주소(도메인)를 찾지 못했습니다. 엔드포인트 URL을 점검하세요."
+            elif "certificate" in le.lower() or "SSL" in le:
+                advice = "보안 인증서 오류입니다. http/https 또는 URL을 점검하세요."
+            return {"kind": kind, "ok": False, "advice": advice, "raw_error": le[:120]}
+        up = text.upper()
         items = self.parse_items(text)
-        # 포털 표준 에러코드 추출 시도
-        head = text.strip()[:300]
-        ok = len(items) > 0
-        result = {"kind": kind, "ok": ok, "endpoint": ep,
-                  "item_count": len(items), "sample_head": head}
-        if not ok:
-            # 흔한 실패: SERVICE_KEY_IS_NOT_REGISTERED_ERROR, NODATA_ERROR 등
-            for code in ["SERVICE_KEY", "NODATA", "LIMITED_NUMBER",
-                         "HTTP_ERROR", "INVALID", "UNREGISTERED", "DEADLINE"]:
-                if code in text.upper():
-                    result["hint"] = code + " (포털 에러코드 확인)"
-                    break
-            result.setdefault("hint", "응답은 왔으나 item이 비었습니다(주소/파라미터/날짜 확인).")
-        return result
+        if items:
+            return {"kind": kind, "ok": True, "item_count": len(items),
+                    "advice": "정상 작동합니다."}
+        # 응답은 왔으나 item 없음 → 에러코드 해석
+        for code, tag, advice in self._ERROR_GUIDE:
+            if code in up:
+                return {"kind": kind, "ok": False, "code": tag, "advice": advice}
+        # 에러코드도 없고 item도 없음
+        # resultCode 00(정상)인데 빈 경우 = 진짜 데이터 없음(주말 등)
+        if "00" in up and ("RESULTCODE" in up or "RESULT_CODE" in up):
+            return {"kind": kind, "ok": False, "code": "empty",
+                    "advice": "정상 응답이지만 자료가 비어 있습니다. 주말/공휴일이거나 "
+                              "해당 조건에 데이터가 없을 수 있습니다(평일 오후 재확인)."}
+        return {"kind": kind, "ok": False, "code": "unknown",
+                "advice": "응답은 왔으나 자료를 해석하지 못했습니다. 엔드포인트 주소나 "
+                          "응답 형식이 예상과 다를 수 있습니다(주소 보정 필요).",
+                "sample": text.strip()[:160]}
