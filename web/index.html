@@ -969,6 +969,32 @@ padding:7px 16px;overflow-x:auto;align-items:center;white-space:nowrap}
 .ce-dt{font-family:var(--mono);font-size:11px;color:var(--teal);flex:none}
 .ce-note{font-size:13px;color:var(--muted);padding:18px 4px;line-height:1.6;text-align:center}
 .ce-attr{font-size:10px;color:var(--muted);margin-top:12px;line-height:1.5;padding-top:10px;border-top:1px solid var(--line)}
+/* 투자 계산기 — 고급 플로팅 창 */
+.calc-float{pointer-events:auto;position:fixed;left:50%;top:70px;transform:translateX(-50%);
+  box-shadow:0 24px 64px rgba(0,0,0,.55);max-height:82vh;display:flex;flex-direction:column;
+  overflow:hidden;border:1px solid var(--line2);border-radius:16px}
+.calc-float.ce-min{max-height:none}
+.calc-head{cursor:move;user-select:none;display:flex;align-items:center;justify-content:space-between;
+  background:linear-gradient(135deg,rgba(45,212,191,.14),rgba(45,212,191,.03));border-bottom:1px solid var(--line)}
+.calc-tabs{padding:11px 14px 0;flex-wrap:wrap;gap:5px}
+.calc-body{padding:16px 18px 8px;max-height:none;overflow-y:auto;flex:1;min-height:0}
+.calc-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:11px}
+.calc-row label{font-size:13px;color:var(--ink2);flex:none;font-weight:500}
+.calc-in{flex:1;max-width:210px;background:var(--panel3);border:1px solid var(--line2);color:var(--ink);
+  border-radius:9px;padding:10px 13px;font-size:15px;font-family:var(--mono);text-align:right;transition:border .12s,box-shadow .12s}
+.calc-in:focus{outline:none;border-color:var(--teal);box-shadow:0 0 0 3px rgba(45,212,191,.13)}
+.calc-grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 16px}
+.calc-grid2 .calc-row{flex-direction:column;align-items:stretch;gap:5px}
+.calc-grid2 .calc-in{max-width:none;text-align:right}
+.calc-sec{font-size:12px;font-weight:700;color:var(--teal);margin:4px 0 9px;letter-spacing:.02em}
+.calc-result{background:linear-gradient(135deg,rgba(45,212,191,.12),rgba(45,212,191,.04));
+  border:1px solid rgba(45,212,191,.3);border-radius:12px;padding:15px 16px;margin:8px 0 6px;font-size:14px;color:var(--ink2)}
+.calc-result b{font-size:22px;color:var(--teal);font-family:var(--mono);font-weight:700}
+.calc-sub{font-size:11.5px;color:var(--muted);margin-top:6px;line-height:1.5}
+.calc-warn{font-size:11px;color:#e7ad48;margin-top:8px;line-height:1.5;background:rgba(231,173,72,.08);padding:7px 10px;border-radius:7px}
+.calc-foot{font-size:10.5px;color:var(--muted);padding:9px 18px 16px;line-height:1.5;border-top:1px solid var(--line)}
+.calc-resize{position:absolute;right:0;bottom:0;width:18px;height:18px;cursor:nwse-resize;
+  background:linear-gradient(135deg,transparent 50%,var(--line2) 50%,var(--line2) 60%,transparent 60%,transparent 72%,var(--line2) 72%,var(--line2) 82%,transparent 82%)}
 /* 기업이벤트 플로팅 창(드래그 이동·축소) */
 .floatwrap{position:fixed;inset:0;z-index:90;pointer-events:none}
 .ce-float{pointer-events:auto;position:fixed;left:50%;top:80px;transform:translateX(-50%);
@@ -1307,7 +1333,7 @@ glossaryOpen: false, glossary: null, glossQ: "", glossCat: "전체", dguideOpen:
 startOpen: false, startGuide: null, startTab: "guide",
 stock: null, stockLoading: false, live: null, newsTs: "",
 feedDisc: null, feedNews: null, feedReports: null, feedPolicy: null, modal: false, reports: null, reportsLoading: false,
-chat: [], chatLastId: 0, chatUser: "익명", reacts: {}, indices: null, fx: null, corpOpen: false, corpTab: "dividend", corpData: null, corpMin: false, corpPos: null, recsCache: {},
+chat: [], chatLastId: 0, chatUser: "익명", reacts: {}, indices: null, fx: null, corpOpen: false, corpTab: "dividend", corpData: null, corpMin: false, corpPos: null, calcOpen: false, calcTab: "yield", calcVals: {}, calcMin: false, calcPos: null, calcW: 520, recsCache: {},
 notice: "", emojiOpen: false, briefing: null, briefingOpen: false, presence: {site:0,chat:0},
 mflowOpen: false, mflow: null, mflowMkt: "KOSPI",
 boardOpen: false, board: null, boardWriting: false,
@@ -1385,6 +1411,7 @@ return '<div class="top">'+
 '<button class="btn" data-action="glossary">📖 용어사전</button>'+
 '<button class="btn" data-action="dguide">📑 공시읽기</button>'+
 '<button class="btn" data-action="corpevents">💰 기업이벤트</button>'+
+'<button class="btn" data-action="calc">🧮 투자계산기</button>'+
 '<button class="btn" data-action="startguide">🚀 주식입문</button>'+
 '<span class="meta-divider"></span>'+
 (h&&h.cafe_url ? '<a class="btn cafe" href="'+esc(h.cafe_url)+'" target="_blank" rel="noopener" title="'+esc(h.cafe_name||"내 카페")+'">☕ 카페</a>' : '')+
@@ -2030,6 +2057,100 @@ return '<div class="modalwrap" data-action="dguide-close"><div class="modal glos
 '<div class="note" style="padding:10px 16px">전자공시(DART) 유형을 쉽게 이해하기 위한 자체 작성 가이드입니다. 투자 판단의 근거가 아닙니다.</div>'+
 '</div></div>';
 }
+function calcModalHTML(){
+if(!state.calcOpen) return '';
+var TABS=[["yield","💵 배당수익률"],["avg","📊 평단가"],["target","🎯 목표가"],
+  ["compound","📈 복리"],["breakeven","⚖️ 손익분기"],["tax","🧾 세금·수수료"]];
+var cur=state.calcTab||"yield";
+var c=state.calcVals||{};
+function val(k,d){ return (c[k]!=null && c[k]!=="")?c[k]:(d!=null?d:""); }
+function inp(k,ph,d){ return '<input class="calc-in" data-calc-k="'+k+'" inputmode="decimal" placeholder="'+ph+'" value="'+esc(val(k,d))+'">'; }
+function num(k,d){ var v=parseFloat(c[k]); return isNaN(v)?(d||0):v; }
+var tabs=TABS.map(function(t){
+  return '<button class="ce-tab'+(cur===t[0]?" on":"")+'" data-action="calc-tab" data-t="'+t[0]+'">'+t[1]+'</button>';
+}).join("");
+function row(label,field){ return '<div class="calc-row"><label>'+label+'</label>'+field+'</div>'; }
+function result(html){ return '<div class="calc-result">'+html+'</div>'; }
+function won(n){ return Math.round(n).toLocaleString()+'원'; }
+function pct(n){ return (Math.round(n*100)/100)+'%'; }
+var body='';
+
+if(cur==="yield"){
+  var price=num("y_price"), div=num("y_div");
+  var dy = price>0 ? (div/price*100) : 0;
+  body=row("현재 주가(원)",inp("y_price","예: 70000"))+
+    row("주당 배당금(원)",inp("y_div","예: 1500"))+
+    result(price>0?('시가배당률 <b>'+pct(dy)+'</b><div class="calc-sub">주가 '+won(price)+' 기준 주당 '+won(div)+' 배당 시</div>'):'주가와 배당금을 입력하세요');
+}
+else if(cur==="avg"){
+  var q1=num("a_q1"),p1=num("a_p1"),q2=num("a_q2"),p2=num("a_p2");
+  var tq=q1+q2, avg=tq>0?((q1*p1+q2*p2)/tq):0;
+  body='<div class="calc-grid2">'+
+    row("1차 수량",inp("a_q1","주"))+row("1차 단가",inp("a_p1","원"))+
+    row("2차 수량",inp("a_q2","주"))+row("2차 단가",inp("a_p2","원"))+'</div>'+
+    result(tq>0?('평균 단가 <b>'+won(avg)+'</b><div class="calc-sub">총 '+tq.toLocaleString()+'주 · 매입금액 '+won(q1*p1+q2*p2)+'</div>'):'수량과 단가를 입력하세요');
+}
+else if(cur==="target"){
+  var tp=num("t_buy"), tr=num("t_ret"), tqty=num("t_qty");
+  var goal = tp>0 ? tp*(1+tr/100) : 0;
+  var profit = tp>0&&tqty>0 ? (goal-tp)*tqty : 0;
+  body=row("매수 단가(원)",inp("t_buy","예: 50000"))+
+    row("목표 수익률(%)",inp("t_ret","예: 20"))+
+    row("보유 수량(주)",inp("t_qty","예: 100"))+
+    result(tp>0&&tr>0?('목표 매도가 <b>'+won(goal)+'</b><div class="calc-sub">'+(tqty>0?('예상 수익 '+won(profit)+' (세전)'):'수량 입력 시 예상 수익 표시')+'</div>'):'매수가와 목표 수익률을 입력하세요');
+}
+else if(cur==="compound"){
+  var P=num("c_p"),r=num("c_r"),y=num("c_y"),add=num("c_add");
+  var bal=P, total=P;
+  for(var i=0;i<y;i++){ bal=(bal+add)*(1+r/100); total+=add; }
+  body=row("초기 투자금(원)",inp("c_p","예: 10000000"))+
+    row("연 수익률(%)",inp("c_r","예: 8"))+
+    row("투자 기간(년)",inp("c_y","예: 10"))+
+    row("매년 추가납입(원)",inp("c_add","예: 0"))+
+    result(P>0&&y>0?('예상 평가금액 <b>'+won(bal)+'</b><div class="calc-sub">총 납입 '+won(total)+' · 수익 '+won(bal-total)+'</div><div class="calc-warn">⚠ 단순 복리 가정. 실제 수익은 변동하며 보장되지 않습니다.</div>'):'값을 입력하세요');
+}
+else if(cur==="breakeven"){
+  var bp=num("b_price"),fee=num("b_fee"),tax=num("b_tax");
+  // 매수+매도 수수료 + 매도세(거래세). 손익분기가=매수가/(1 - 매도비용율) 근사
+  var sellCost=(fee/100)+(tax/100); var buyCost=(fee/100);
+  var be = bp>0 ? bp*(1+buyCost)/(1-sellCost) : 0;
+  body=row("매수 단가(원)",inp("b_price","예: 50000"))+
+    row("수수료율(편도 %)",inp("b_fee","예: 0.015","0.015"))+
+    row("증권거래세(%)",inp("b_tax","예: 0.18","0.18"))+
+    result(bp>0?('손익분기 매도가 <b>'+won(be)+'</b><div class="calc-sub">이 가격 이상 팔아야 수수료·세금 빼고 본전. 약 '+pct((be/bp-1)*100)+' 상승 필요</div>'):'매수 단가를 입력하세요');
+}
+else if(cur==="tax"){
+  var amt=num("t_div"); // 배당소득세
+  var dtax=amt*0.154; // 15.4%(소득세14%+지방세1.4%)
+  var sell=num("t_sell"); // 매도금액
+  var stax=sell*0.0018; // 거래세 0.18%
+  body='<div class="calc-sec">배당소득세(15.4%)</div>'+
+    row("배당금(원)",inp("t_div","예: 1000000"))+
+    (amt>0?result('세금 <b>'+won(dtax)+'</b> · 실수령 '+won(amt-dtax)):'')+
+    '<div class="calc-sec" style="margin-top:14px">증권거래세(매도 0.18%)</div>'+
+    row("매도금액(원)",inp("t_sell","예: 5000000"))+
+    (sell>0?result('거래세 <b>'+won(stax)+'</b>'):'')+
+    '<div class="calc-warn">⚠ 2026년 기준 단순 계산(금융투자소득세·대주주 요건·종합과세 등 미반영). 실제는 세무 전문가 확인.</div>';
+}
+
+var cmini=state.calcMin?' ce-min':'';
+var cpos=state.calcPos;
+var cstyle='width:'+(state.calcW||520)+'px;'+
+  (cpos?('position:fixed;left:'+cpos.x+'px;top:'+cpos.y+'px;margin:0;transform:none;'):'');
+return '<div class="floatwrap'+cmini+'"><div class="modal calc-float float-win'+cmini+'" data-stop="1" data-poskey="calcPos" style="'+cstyle+'">'+
+  '<div class="modal-h calc-head float-drag"><b>🧮 투자 계산기</b>'+
+    '<span class="ce-winbtns">'+
+      '<button class="ce-winbtn" data-action="calc-min" title="'+(state.calcMin?'확장':'축소')+'">'+(state.calcMin?'⊡':'⊟')+'</button>'+
+      '<button class="ce-winbtn" data-action="calc-close" title="닫기">✕</button>'+
+    '</span></div>'+
+  (state.calcMin?'':(
+    '<div class="ce-tabs calc-tabs">'+tabs+'</div>'+
+    '<div class="calc-body">'+body+'</div>'+
+    '<div class="calc-foot">모든 계산은 참고용이며 투자 권유가 아닙니다. 입력값은 저장되지 않습니다.</div>'+
+    '<div class="calc-resize" data-action="calc-resize"></div>'
+  ))+
+  '</div></div>';
+}
 function corpEventsModalHTML(){
 if(!state.corpOpen) return '';
 var TABS=[["dividend","💵 배당"],["rights","📈 증자"],["treasury","🔁 자사주"],["lockup","🔓 보호예수"]];
@@ -2067,8 +2188,8 @@ var pos=state.corpPos;
 var style='max-width:560px;width:560px;'+
   (pos?('position:fixed;left:'+pos.x+'px;top:'+pos.y+'px;margin:0;transform:none;'):'');
 // 플로팅 창: 헤더를 잡고 드래그 이동, ⊟ 축소 / ⊡ 확장
-return '<div class="floatwrap'+mini+'"><div class="modal ce-float'+mini+'" data-stop="1" style="'+style+'">'+
-  '<div class="modal-h ce-drag" data-action="corp-dragstart"><b>💰 기업 이벤트</b>'+
+return '<div class="floatwrap'+mini+'"><div class="modal ce-float float-win'+mini+'" data-stop="1" data-poskey="corpPos" style="'+style+'">'+
+  '<div class="modal-h ce-drag float-drag" data-action="corp-dragstart"><b>💰 기업 이벤트</b>'+
     '<span class="ce-winbtns">'+
       '<button class="ce-winbtn" data-action="corp-min" title="'+(state.corpMin?'확장':'축소')+'">'+(state.corpMin?'⊡':'⊟')+'</button>'+
       '<button class="ce-winbtn" data-action="corp-close" title="닫기">✕</button>'+
@@ -2919,6 +3040,7 @@ glossaryModalHTML()+
 dguideModalHTML()+
 startGuideModalHTML()+
 corpEventsModalHTML()+
+calcModalHTML()+
 toastHTML();
 }
 // ---------- data ----------
@@ -3740,6 +3862,16 @@ render();
 // 포커스 유지
 var el=document.getElementById("glossq"); if(el){ el.focus(); }
 }
+else if(e.target && e.target.getAttribute && e.target.getAttribute("data-calc-k")){
+var k=e.target.getAttribute("data-calc-k");
+var caret=e.target.selectionStart;
+state.calcVals=state.calcVals||{};
+state.calcVals[k]=e.target.value;
+render();
+// 포커스·커서 위치 유지
+var el=document.querySelector('[data-calc-k="'+k+'"]');
+if(el){ el.focus(); try{ el.setSelectionRange(caret,caret); }catch(_){} }
+}
 else if(e.target && e.target.id==="chatname"){
 // 이름만 바꿔도 저장(전송 안 해도 F5 후 유지). presence 는 IP 기준이라 영향 없음.
 clearTimeout(nameTimer);
@@ -3751,13 +3883,13 @@ nameTimer=setTimeout(function(){ saveChatName(v.trim()||"익명"); }, 400);
 (function(){
   var drag=null;
   function down(e){
-    var h=e.target.closest && e.target.closest(".ce-drag");
+    var h=e.target.closest && e.target.closest(".float-drag");
     if(!h) return;
     if(e.target.closest(".ce-winbtn")) return;   // 버튼 클릭은 드래그 아님
-    var win=h.closest(".ce-float"); if(!win) return;
+    var win=h.closest(".float-win"); if(!win) return;
     var r=win.getBoundingClientRect();
     var pt=e.touches?e.touches[0]:e;
-    drag={win:win, dx:pt.clientX-r.left, dy:pt.clientY-r.top};
+    drag={win:win, dx:pt.clientX-r.left, dy:pt.clientY-r.top, key:win.getAttribute("data-poskey")};
     win.style.transition="none";
     e.preventDefault();
   }
@@ -3765,12 +3897,11 @@ nameTimer=setTimeout(function(){ saveChatName(v.trim()||"익명"); }, 400);
     if(!drag) return;
     var pt=e.touches?e.touches[0]:e;
     var x=pt.clientX-drag.dx, y=pt.clientY-drag.dy;
-    // 화면 밖으로 완전히 안 나가게 약간 제한
     x=Math.max(-200,Math.min(x,(window.innerWidth||1000)-80));
     y=Math.max(0,Math.min(y,(window.innerHeight||800)-40));
     drag.win.style.position="fixed"; drag.win.style.margin="0"; drag.win.style.transform="none";
     drag.win.style.left=x+"px"; drag.win.style.top=y+"px";
-    if(typeof state!=="undefined"){ state.corpPos={x:Math.round(x),y:Math.round(y)}; }
+    if(typeof state!=="undefined" && drag.key){ state[drag.key]={x:Math.round(x),y:Math.round(y)}; }
   }
   function up(){ drag=null; }
   document.addEventListener("mousedown",down);
@@ -3779,6 +3910,31 @@ nameTimer=setTimeout(function(){ saveChatName(v.trim()||"익명"); }, 400);
   document.addEventListener("touchstart",down,{passive:false});
   document.addEventListener("touchmove",move,{passive:false});
   document.addEventListener("touchend",up);
+  // ── 계산기 창 리사이즈(우하단 핸들) ──
+  var rsz=null;
+  function rdown(e){
+    var h=e.target.closest && e.target.closest(".calc-resize");
+    if(!h) return;
+    var win=h.closest(".float-win"); if(!win) return;
+    var r=win.getBoundingClientRect();
+    var pt=e.touches?e.touches[0]:e;
+    rsz={win:win, sx:pt.clientX, sw:r.width};
+    e.preventDefault(); e.stopPropagation();
+  }
+  function rmove(e){
+    if(!rsz) return;
+    var pt=e.touches?e.touches[0]:e;
+    var w=Math.max(360,Math.min(rsz.sw+(pt.clientX-rsz.sx),760));
+    rsz.win.style.width=w+"px";
+    if(typeof state!=="undefined"){ state.calcW=Math.round(w); }
+  }
+  function rup(){ rsz=null; }
+  document.addEventListener("mousedown",rdown,true);
+  document.addEventListener("mousemove",rmove);
+  document.addEventListener("mouseup",rup);
+  document.addEventListener("touchstart",rdown,{passive:false,capture:true});
+  document.addEventListener("touchmove",rmove,{passive:false});
+  document.addEventListener("touchend",rup);
 })();
 document.addEventListener("click",function(e){
 var t=e.target.closest?e.target.closest("[data-action]"):null; if(!t) return;
@@ -3799,6 +3955,10 @@ else if(a==="corpevents"){
   state.corpOpen=true; state.corpMin=false; state.corpTab=state.corpTab||"dividend"; render();
   loadCorpEvents(state.corpTab);
 }
+else if(a==="calc"){ state.calcOpen=true; state.calcMin=false; state.calcTab=state.calcTab||"yield"; render(); }
+else if(a==="calc-close"){ if(t.getAttribute("data-stop"))return; state.calcOpen=false; render(); }
+else if(a==="calc-min"){ state.calcMin=!state.calcMin; render(); }
+else if(a==="calc-tab"){ state.calcTab=t.getAttribute("data-t"); render(); }
 else if(a==="corp-close"){ state.corpOpen=false; render(); }
 else if(a==="corp-min"){ state.corpMin=!state.corpMin; render(); }
 else if(a==="corp-tab"){
