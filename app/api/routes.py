@@ -17,7 +17,7 @@ from typing import Any, Optional
 
 from app.llm import explain as explain_mod
 
-BUILD_VERSION = "2026.06.29-corp1"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
+BUILD_VERSION = "2026.06.29-corp2"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
 
 
 def _rsi_series(values: list, period: int = 14) -> list:
@@ -154,11 +154,11 @@ def register_routes(app: Any, ctx: Any) -> None:
         return None
 
     def _is_admin(request) -> bool:
-        tok = getattr(ctx.config, "admin_token", "") or ""
+        tok = (getattr(ctx.config, "admin_token", "") or "").strip()
         if not tok:
             return False
         try:
-            hdr = request.headers.get("x-admin-token") or ""
+            hdr = (request.headers.get("x-admin-token") or "").strip()
         except Exception:
             hdr = ""
         return hdr == tok
@@ -180,6 +180,7 @@ def register_routes(app: Any, ctx: Any) -> None:
                 "policy_news": bool(getattr(ctx, "policy_news", None)),
                 "public_data_set": bool(getattr(ctx.config, "data_go_key", "")),
                 "fx_set": bool(getattr(ctx.config, "exim_key", "")),
+                "admin_set": bool(getattr(ctx.config, "admin_token", "")),
                 "market_holidays": all_holiday_dates(),
                 "llm": "anthropic" if ctx.llm_client else "offline"}
 
