@@ -4040,6 +4040,12 @@ nameTimer=setTimeout(function(){ saveChatName(v.trim()||"익명"); }, 400);
 document.addEventListener("click",function(e){
 var t=e.target.closest?e.target.closest("[data-action]"):null; if(!t) return;
 var a=t.getAttribute("data-action");
+// 모달 배경 닫기(*-close)인데, 클릭 지점이 모달 내용(data-stop) 안이면 닫지 않음
+if(a && /-close$/.test(a) && e.target.closest && e.target.closest('[data-stop]')){
+  var stopEl=e.target.closest('[data-stop]');
+  // 닫기 대상(배경)이 data-stop 바깥에 있을 때만 무시(내용 클릭 보호)
+  if(stopEl && stopEl.contains(e.target) && t.contains(stopEl)){ return; }
+}
 if(a==="horizon"){ state.horizon=t.getAttribute("data-h"); state.sel=null; state.modal=false; state.explanation=""; state.diag=null; state.stock=null; state.live=null; manageTimers(); render(); loadRecs(state.horizon); }
 else if(a==="scrmode"){ state.scrMode=t.getAttribute("data-m"); state.q=""; state.sel=null; state.scrData=null; render(); loadScreen(state.scrMode, ""); }
 else if(a==="react"){
