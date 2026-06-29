@@ -969,6 +969,16 @@ padding:7px 16px;overflow-x:auto;align-items:center;white-space:nowrap}
 .ce-dt{font-family:var(--mono);font-size:11px;color:var(--teal);flex:none}
 .ce-note{font-size:13px;color:var(--muted);padding:18px 4px;line-height:1.6;text-align:center}
 .ce-attr{font-size:10px;color:var(--muted);margin-top:12px;line-height:1.5;padding-top:10px;border-top:1px solid var(--line)}
+.ce-search{display:flex;gap:7px;margin-bottom:12px}
+.ce-search-in{flex:1;background:var(--panel3);border:1px solid var(--line2);color:var(--ink);border-radius:8px;padding:9px 12px;font-size:14px}
+.ce-search-in:focus{outline:none;border-color:var(--teal)}
+.ce-search-btn{background:var(--teal);color:#04201c;border:none;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;flex:none}
+.ce-hint{font-size:12px;color:var(--muted);padding:6px 2px}
+.ce-fin{padding:11px 0;border-bottom:1px solid var(--line)}
+.ce-fin .ce-nm{margin-bottom:6px}
+.ce-yr{font-size:11px;color:var(--muted);font-weight:400}
+.ce-fin-row{display:flex;flex-wrap:wrap;gap:8px}
+.ce-fin-row span{font-size:12.5px;font-family:var(--mono);color:var(--ink2);background:var(--panel3);padding:4px 9px;border-radius:6px}
 /* 투자 계산기 — 고급 플로팅 창 */
 .calc-float{pointer-events:auto;position:fixed;left:50%;top:70px;transform:translateX(-50%);
   box-shadow:0 24px 64px rgba(0,0,0,.55);max-height:82vh;display:flex;flex-direction:column;
@@ -995,6 +1005,11 @@ padding:7px 16px;overflow-x:auto;align-items:center;white-space:nowrap}
 .calc-foot{font-size:10.5px;color:var(--muted);padding:9px 18px 16px;line-height:1.5;border-top:1px solid var(--line)}
 .calc-resize{position:absolute;right:0;bottom:0;width:18px;height:18px;cursor:nwse-resize;
   background:linear-gradient(135deg,transparent 50%,var(--line2) 50%,var(--line2) 60%,transparent 60%,transparent 72%,var(--line2) 72%,var(--line2) 82%,transparent 82%)}
+/* 범용 창: 모든 모달 제목줄 드래그 + 우하단 리사이즈 */
+.modal-h.win-drag{cursor:move;user-select:none}
+.win-resize{position:absolute;right:0;bottom:0;width:20px;height:20px;cursor:nwse-resize;z-index:5;
+  background:linear-gradient(135deg,transparent 45%,var(--line2) 45%,var(--line2) 55%,transparent 55%,transparent 68%,var(--line2) 68%,var(--line2) 78%,transparent 78%)}
+.modal{position:relative}
 /* 기업이벤트 플로팅 창(드래그 이동·축소) */
 .floatwrap{position:fixed;inset:0;z-index:90;pointer-events:none}
 .ce-float{pointer-events:auto;position:fixed;left:50%;top:80px;transform:translateX(-50%);
@@ -1333,7 +1348,7 @@ glossaryOpen: false, glossary: null, glossQ: "", glossCat: "전체", dguideOpen:
 startOpen: false, startGuide: null, startTab: "guide",
 stock: null, stockLoading: false, live: null, newsTs: "",
 feedDisc: null, feedNews: null, feedReports: null, feedPolicy: null, modal: false, reports: null, reportsLoading: false,
-chat: [], chatLastId: 0, chatUser: "익명", reacts: {}, indices: null, fx: null, corpOpen: false, corpTab: "dividend", corpData: null, corpMin: false, corpPos: null, calcOpen: false, calcTab: "yield", calcVals: {}, calcMin: false, calcPos: null, calcW: 520, recsCache: {},
+chat: [], chatLastId: 0, chatUser: "익명", reacts: {}, indices: null, fx: null, corpOpen: false, corpTab: "dividend", corpData: null, corpMin: false, corpPos: null, corpQuery: "", calcOpen: false, calcTab: "yield", calcVals: {}, calcMin: false, calcPos: null, calcW: 520, recsCache: {},
 notice: "", emojiOpen: false, briefing: null, briefingOpen: false, presence: {site:0,chat:0},
 mflowOpen: false, mflow: null, mflowMkt: "KOSPI",
 boardOpen: false, board: null, boardWriting: false,
@@ -2153,34 +2168,64 @@ return '<div class="floatwrap'+cmini+'"><div class="modal calc-float float-win'+
 }
 function corpEventsModalHTML(){
 if(!state.corpOpen) return '';
-var TABS=[["dividend","💵 배당"],["rights","📈 증자"],["treasury","🔁 자사주"],["lockup","🔓 보호예수"]];
+var TABS=[["dividend","💵 배당"],["rights","📈 증자"],["treasury","🔁 자사주"],
+  ["lockup","🔓 보호예수"],["rights_schedule","📅 권리일정"],
+  ["finance","🏢 재무"],["dividend_detail","💎 배당상세"]];
 var cur=state.corpTab||"dividend";
 var tabs=TABS.map(function(t){
   return '<button class="ce-tab'+(cur===t[0]?" on":"")+'" data-action="corp-tab" data-t="'+t[0]+'">'+t[1]+'</button>';
 }).join("");
+// 종목 검색이 필요한 탭(재무·배당상세는 회사명 필수, 권리일정은 선택)
+var SEARCH_TABS={finance:1,dividend_detail:1,rights_schedule:1};
+var searchBox='';
+if(SEARCH_TABS[cur]){
+  var q=esc(state.corpQuery||"");
+  searchBox='<div class="ce-search"><input class="ce-search-in" id="corpq" placeholder="회사명 입력(예: 삼성전자)" value="'+q+'">'+
+    '<button class="ce-search-btn" data-action="corp-search">조회</button></div>'+
+    (cur!=="rights_schedule"&&!state.corpQuery?'<div class="ce-hint">회사명을 입력하고 조회하세요.</div>':'');
+}
 var d=state.corpData&&state.corpData[cur];
 var body;
-if(!d){ body='<div class="adm-load">불러오는 중…</div>'; }
+if(SEARCH_TABS[cur] && cur!=="rights_schedule" && !state.corpQuery){
+  body=searchBox;
+}
+else if(!d){ body=searchBox+'<div class="adm-load">불러오는 중…</div>'; }
 else if(d.note && (!d.items||!d.items.length) && !d.error){
-  body='<div class="ce-note">'+esc(d.note)+'</div>';
+  body=searchBox+'<div class="ce-note">'+esc(d.note)+'</div>';
 }
 else if(d.error || !d.items || !d.items.length){
-  body='<div class="ce-note">'+esc(d.error||"자료가 없습니다.")+'</div>';
+  body=searchBox+'<div class="ce-note">'+esc(d.error||"자료가 없습니다.")+'</div>';
+}
+else if(cur==="finance"){
+  // 재무: 매출·영업이익·순이익 등 숫자 강조
+  var frows=d.items.slice(0,6).map(function(it){
+    var nm=it.corpNm||it.corp_name||"-";
+    var yr=it.bizYear||it.basDt||it.acitId||"";
+    function money(v){ var n=parseFloat(String(v||"").replace(/,/g,"")); if(isNaN(n))return null; 
+      if(Math.abs(n)>=1e8) return (Math.round(n/1e8*10)/10).toLocaleString()+"억"; 
+      if(Math.abs(n)>=1e4) return (Math.round(n/1e4)).toLocaleString()+"만"; return n.toLocaleString(); }
+    var sale=money(it.enpSaleAmt||it.saleAmt||it.revenue);
+    var op=money(it.enpBzopPft||it.bzopPft||it.opProfit);
+    var net=money(it.enpCrtmNpf||it.thtrmNpf||it.netIncome);
+    var fields=[];
+    if(sale)fields.push('매출 '+sale); if(op)fields.push('영업익 '+op); if(net)fields.push('순익 '+net);
+    return '<div class="ce-fin"><div class="ce-nm">'+esc(nm)+(yr?' <span class="ce-yr">'+esc(String(yr))+'</span>':'')+'</div>'+
+      (fields.length?'<div class="ce-fin-row">'+fields.map(function(f){return '<span>'+esc(f)+'</span>';}).join('')+'</div>':'')+'</div>';
+  }).join("");
+  body=searchBox+'<div class="ce-list">'+frows+'</div>'+
+    '<div class="ce-attr">'+esc(d.attribution||"")+'<br>'+esc(d.note||"")+'</div>';
 }
 else {
-  // 공공데이터 응답은 필드명이 데이터마다 달라, 회사명/일자/내용 후보를 유연하게 추출
   var rows=d.items.map(function(it){
     var nm=it.corpNm||it.stckIssuCmpyNm||it.issucoNm||it.isuNm||it.itmsNm||it.corp_name||it.fncoNm||"-";
-    var dt=it.basDt||it.rcptDt||it.rceptDt||it.listDt||it.scsbpDt||it.dividDt||it.rtrnDt||"";
-    var extra=it.stockKindNm||it.scstaNm||it.purpose||it.rtrnRsn||it.dividRate||it.st, ex="";
-    // 보기 좋은 보조 정보 후보
-    var sub=it.dividRate?("배당률 "+it.dividRate):(it.rtrnRsn?("사유: "+it.rtrnRsn):(it.purpose||it.scstaNm||""));
+    var dt=it.basDt||it.rcptDt||it.rceptDt||it.listDt||it.scsbpDt||it.dividDt||it.rtrnDt||it.rgtStdDt||it.exrcBgnDt||"";
+    var sub=it.dividRate?("배당률 "+it.dividRate):(it.rtrnRsn?("사유: "+it.rtrnRsn):(it.purpose||it.scstaNm||it.rgtsRsnNm||it.dividKindNm||""));
     if(dt&&dt.length===8) dt=dt.slice(0,4)+"-"+dt.slice(4,6)+"-"+dt.slice(6,8);
     return '<div class="ce-row"><div class="ce-nm">'+esc(nm)+'</div>'+
       (sub?'<div class="ce-sub">'+esc(String(sub))+'</div>':'')+
       (dt?'<div class="ce-dt">'+esc(dt)+'</div>':'')+'</div>';
   }).join("");
-  body='<div class="ce-list">'+rows+'</div>'+
+  body=searchBox+'<div class="ce-list">'+rows+'</div>'+
     '<div class="ce-attr">'+esc(d.attribution||"")+'<br>'+esc(d.note||"")+'</div>';
 }
 var mini=state.corpMin?' ce-min':'';
@@ -3042,6 +3087,8 @@ startGuideModalHTML()+
 corpEventsModalHTML()+
 calcModalHTML()+
 toastHTML();
+// 열려있는 모든 모달에 드래그·리사이즈 핸들 자동 부착
+if(window.__ensureWinHandles) window.__ensureWinHandles();
 }
 // ---------- data ----------
 function getJSON(u,o){ return fetch(API+u,o).then(function(r){ if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); }); }
@@ -3452,11 +3499,18 @@ state.fx=j;
 var el=document.getElementById("fxbar"); if(el) el.innerHTML=fxStripHTML();
 }).catch(function(){});
 }
-function loadCorpEvents(kind){
-var ep={dividend:"/api/corp/dividend",rights:"/api/corp/rights",treasury:"/api/corp/treasury",lockup:"/api/corp/lockup"}[kind];
+function loadCorpEvents(kind, force){
+var SEARCH={finance:1,dividend_detail:1,rights_schedule:1};
+var ep={dividend:"/api/corp/dividend",rights:"/api/corp/rights",treasury:"/api/corp/treasury",
+  lockup:"/api/corp/lockup",finance:"/api/corp/finance",dividend_detail:"/api/corp/dividend_detail",
+  rights_schedule:"/api/corp/rights_schedule"}[kind];
 if(!ep) return;
 state.corpData=state.corpData||{};
-if(state.corpData[kind]) { return; }  // 이미 로드됨(캐시)
+// 검색 탭(재무·배당상세)은 회사명 필수
+if(SEARCH[kind] && kind!=="rights_schedule" && !state.corpQuery) return;
+if(SEARCH[kind] && state.corpQuery){ ep+="?name="+encodeURIComponent(state.corpQuery); }
+if(state.corpData[kind] && !force) { return; }  // 이미 로드됨(캐시)
+state.corpData[kind]=null; if(state.corpOpen) render();
 getJSON(ep).then(function(j){ state.corpData[kind]=j; if(state.corpOpen) render(); })
   .catch(function(){ state.corpData[kind]={items:[],error:"불러오기 실패"}; if(state.corpOpen) render(); });
 }
@@ -3879,14 +3933,31 @@ var v=e.target.value;
 nameTimer=setTimeout(function(){ saveChatName(v.trim()||"익명"); }, 400);
 }
 });
-// ── 기업이벤트 창 드래그 이동 ──
+// ── 범용 창 시스템: 모든 모달(modal-h 제목줄)을 드래그 이동 + 리사이즈 ──
 (function(){
+  // 리사이즈 핸들이 없는 모달에 자동으로 붙인다(렌더 후마다 호출됨)
+  window.__ensureWinHandles=function(){
+    var modals=document.querySelectorAll(".modal");
+    for(var i=0;i<modals.length;i++){
+      var m=modals[i];
+      // 제목줄을 드래그 핸들로 표시
+      var head=m.querySelector(".modal-h");
+      if(head && !head.classList.contains("win-drag")){ head.classList.add("win-drag"); }
+      // 리사이즈 핸들 자동 추가(없으면)
+      if(!m.querySelector(".win-resize")){
+        var rz=document.createElement("div");
+        rz.className="win-resize";
+        m.appendChild(rz);
+      }
+    }
+  };
+
   var drag=null;
   function down(e){
-    var h=e.target.closest && e.target.closest(".float-drag");
+    var h=e.target.closest && (e.target.closest(".win-drag") || e.target.closest(".float-drag"));
     if(!h) return;
-    if(e.target.closest(".ce-winbtn")) return;   // 버튼 클릭은 드래그 아님
-    var win=h.closest(".float-win"); if(!win) return;
+    if(e.target.closest(".modal-x") || e.target.closest(".ce-winbtn") || e.target.closest("button")) return;
+    var win=h.closest(".modal"); if(!win) return;
     var r=win.getBoundingClientRect();
     var pt=e.touches?e.touches[0]:e;
     drag={win:win, dx:pt.clientX-r.left, dy:pt.clientY-r.top, key:win.getAttribute("data-poskey")};
@@ -3897,7 +3968,7 @@ nameTimer=setTimeout(function(){ saveChatName(v.trim()||"익명"); }, 400);
     if(!drag) return;
     var pt=e.touches?e.touches[0]:e;
     var x=pt.clientX-drag.dx, y=pt.clientY-drag.dy;
-    x=Math.max(-200,Math.min(x,(window.innerWidth||1000)-80));
+    x=Math.max(-240,Math.min(x,(window.innerWidth||1000)-80));
     y=Math.max(0,Math.min(y,(window.innerHeight||800)-40));
     drag.win.style.position="fixed"; drag.win.style.margin="0"; drag.win.style.transform="none";
     drag.win.style.left=x+"px"; drag.win.style.top=y+"px";
@@ -3910,23 +3981,28 @@ nameTimer=setTimeout(function(){ saveChatName(v.trim()||"익명"); }, 400);
   document.addEventListener("touchstart",down,{passive:false});
   document.addEventListener("touchmove",move,{passive:false});
   document.addEventListener("touchend",up);
-  // ── 계산기 창 리사이즈(우하단 핸들) ──
+
+  // ── 리사이즈(우하단 핸들) — 모든 모달 공통 ──
   var rsz=null;
   function rdown(e){
-    var h=e.target.closest && e.target.closest(".calc-resize");
+    var h=e.target.closest && (e.target.closest(".win-resize") || e.target.closest(".calc-resize"));
     if(!h) return;
-    var win=h.closest(".float-win"); if(!win) return;
+    var win=h.closest(".modal"); if(!win) return;
     var r=win.getBoundingClientRect();
     var pt=e.touches?e.touches[0]:e;
-    rsz={win:win, sx:pt.clientX, sw:r.width};
+    rsz={win:win, sx:pt.clientX, sy:pt.clientY, sw:r.width, sh:r.height,
+         key:win.getAttribute("data-poskey")};
     e.preventDefault(); e.stopPropagation();
   }
   function rmove(e){
     if(!rsz) return;
     var pt=e.touches?e.touches[0]:e;
-    var w=Math.max(360,Math.min(rsz.sw+(pt.clientX-rsz.sx),760));
+    var w=Math.max(320,Math.min(rsz.sw+(pt.clientX-rsz.sx),Math.min(960,(window.innerWidth||1000)-20)));
+    var hh=Math.max(220,Math.min(rsz.sh+(pt.clientY-rsz.sy),(window.innerHeight||800)-20));
     rsz.win.style.width=w+"px";
-    if(typeof state!=="undefined"){ state.calcW=Math.round(w); }
+    rsz.win.style.height=hh+"px";
+    rsz.win.style.maxHeight="none";
+    if(typeof state!=="undefined" && rsz.key){ state.calcW=Math.round(w); }
   }
   function rup(){ rsz=null; }
   document.addEventListener("mousedown",rdown,true);
@@ -3963,6 +4039,11 @@ else if(a==="corp-close"){ state.corpOpen=false; render(); }
 else if(a==="corp-min"){ state.corpMin=!state.corpMin; render(); }
 else if(a==="corp-tab"){
   state.corpTab=t.getAttribute("data-t"); render(); loadCorpEvents(state.corpTab);
+}
+else if(a==="corp-search"){
+  var qel=document.getElementById("corpq");
+  state.corpQuery=(qel&&qel.value.trim())||"";
+  if(state.corpQuery){ loadCorpEvents(state.corpTab, true); }
 }
 else if(a==="policy-diag"){
 state.policyDiag={loading:true}; render();
@@ -4222,6 +4303,12 @@ if(!insideModal){ state.btModal=false; manageTimers(); render(); }
 });
 document.addEventListener("keydown",function(e){
 if(e.target && e.target.id==="chatinput" && e.key==="Enter"){ e.preventDefault(); sendChat(); return; }
+if(e.target && e.target.id==="corpq" && e.key==="Enter"){
+  e.preventDefault();
+  state.corpQuery=e.target.value.trim();
+  if(state.corpQuery){ loadCorpEvents(state.corpTab, true); }
+  return;
+}
 if(e.key==="Escape" && state.anomModal){ state.anomModal=false; manageTimers(); render(); return; }
 if(e.key==="Escape" && state.regimeModal){ state.regimeModal=false; manageTimers(); render(); return; }
 if(e.key==="Escape" && state.themeModal){ state.themeModal=false; manageTimers(); render(); return; }
