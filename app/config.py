@@ -91,7 +91,7 @@ class Config:
     # DART 공시·뉴스(제목+링크)·커뮤니티·종목 검색(이름)만 남긴다.
     public_mode: bool = _bool("RECO_PUBLIC_MODE", False)
     # 운영자(모더레이션) 토큰 — 신고 처리·숨김·금지어 관리에 필요. 비우면 운영자 기능 비활성.
-    admin_token: str = os.getenv("RECO_ADMIN_TOKEN", "")
+    admin_token: str = os.getenv("RECO_ADMIN_TOKEN", "").strip()
     # Google AdSense 게시자 ID(예: ca-pub-1234567890123456). 비우면 수동 ad.txt 배너 사용.
     adsense_pub: str = os.getenv("RECO_ADSENSE_PUB", "")
     adsense_slot: str = os.getenv("RECO_ADSENSE_SLOT", "")
