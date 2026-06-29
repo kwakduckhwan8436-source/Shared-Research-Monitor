@@ -1565,6 +1565,24 @@ def register_routes(app: Any, ctx: Any) -> None:
     def corp_lockup() -> dict:
         return _corp_events("lockup", {})
 
+    @app.get("/api/corp/finance")
+    def corp_finance(name: str = "") -> dict:
+        """기업 재무정보(요약) — 종목명으로 조회. 매출·영업이익·순이익 등."""
+        params = {"crno": "", "corpNm": name} if name else {}
+        return _corp_events("finance", params, ttl=3600)
+
+    @app.get("/api/corp/dividend_detail")
+    def corp_dividend_detail(name: str = "") -> dict:
+        """주식 배당 상세 — 배당기준일·지급일·배당률·주식종류."""
+        params = {"corpNm": name} if name else {}
+        return _corp_events("dividend_detail", params, ttl=3600)
+
+    @app.get("/api/corp/rights_schedule")
+    def corp_rights_schedule(name: str = "") -> dict:
+        """주식 권리일정 — 배당·증자·교환·감자 등 권리행사 일정."""
+        params = {"corpNm": name} if name else {}
+        return _corp_events("rights_schedule", params, ttl=3600)
+
     @app.get("/api/corp/diag")
     def corp_diag(request: Request) -> dict:
         """운영자용 진단 — 각 엔드포인트를 실제 호출해 성공/실패를 점검.
@@ -1576,7 +1594,8 @@ def register_routes(app: Any, ctx: Any) -> None:
             return {"ok": False, "error": "DATA_GO_KR_KEY 가 설정되지 않았습니다.",
                     "hint": "Render Environment 에 DATA_GO_KR_KEY 를 넣고 재배포하세요."}
         results = []
-        for kind in ["dividend", "rights", "treasury", "lockup", "corp"]:
+        for kind in ["dividend", "rights", "treasury", "lockup", "corp",
+                     "finance", "dividend_detail", "rights_schedule"]:
             try:
                 results.append(prov.diagnose(kind))
             except Exception as e:
