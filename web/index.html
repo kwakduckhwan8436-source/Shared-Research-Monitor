@@ -632,6 +632,7 @@ body.light .sd-bar i.pos{background:#cc3e36}body.light .sd-bar i.neg{background:
 .pd-advice.ok{color:var(--teal)}
 .pd-big-ok{background:rgba(45,212,191,.12);border:1px solid rgba(45,212,191,.3);border-radius:9px;padding:11px 13px;font-size:13px;color:var(--teal);font-weight:600;margin:6px 0 10px;line-height:1.5}
 .pd-big-bad{background:rgba(231,173,72,.1);border:1px solid rgba(231,173,72,.3);border-radius:9px;padding:11px 13px;font-size:12.5px;color:#e7ad48;margin:6px 0 10px;line-height:1.6}
+.adm-tokchk{margin-top:10px;padding:10px 12px;background:var(--panel3);border:1px solid var(--line2);border-radius:8px;font-size:12px;color:var(--ink2);line-height:1.5}
 .adm-empty,.adm-load{padding:24px;text-align:center;color:var(--muted);font-size:12px}
 .adm-banned{padding:14px 18px;border-top:1px solid var(--line)}
 .adm-stats{padding:14px 18px;border-top:1px solid var(--line)}
@@ -1346,7 +1347,7 @@ function evKo(k){ return EV_KO[k]||k; }
 var state = {
 horizon: "swing", scrMode: "foreign", scrMarket: "", scrData: null, data: null, sel: null, view: "evidence",
 explanation: "", explLoading: false, diag: null, diagLoading: false,
-legalDoc: null, adminOpen: false, adminToken: (function(){try{return localStorage.getItem("reco_admin_tok")||null;}catch(e){return null;}})(), adminReports: null, adminBanned: null, adminStats: null, policyDiag: null, corpDiag: null, calCov: null,
+legalDoc: null, adminOpen: false, adminToken: (function(){try{return localStorage.getItem("reco_admin_tok")||null;}catch(e){return null;}})(), adminReports: null, adminBanned: null, adminStats: null, policyDiag: null, corpDiag: null, calCov: null, adminTokChk: null,
 cal: null, calY: 0, calM: 0, calFilter: {}, calAdminOpen: false, calAdminList: null, mTab: "cal",
 glossaryOpen: false, glossary: null, glossQ: "", glossCat: "전체", dguideOpen: false, dguide: null,
 startOpen: false, startGuide: null, startTab: "guide",
@@ -2306,6 +2307,8 @@ if(!state.adminToken){
 body='<div class="adm-login"><div class="adm-lbl">운영자 토큰을 입력하세요</div>'+
 '<input id="admtoken" class="adm-input" type="password" placeholder="RECO_ADMIN_TOKEN"/>'+
 '<button class="adm-btn" data-action="admin-login">로그인</button>'+
+'<button class="adm-sbtn" data-action="admin-token-check" style="margin-top:8px">토큰 진단(왜 안 맞는지 확인)</button>'+
+(state.adminTokChk?'<div class="adm-tokchk">'+esc(state.adminTokChk)+'</div>':'')+
 '<div class="adm-hint">.env 의 RECO_ADMIN_TOKEN 값과 같아야 합니다.</div></div>';
 } else if(!rs){
 body='<div class="adm-load">신고 목록 불러오는 중…</div>';
@@ -4181,6 +4184,21 @@ if(!tok) return;
 state.adminToken=tok;
 try{ localStorage.setItem("reco_admin_tok",tok); }catch(e){}
 loadAdminReports();
+}
+else if(a==="admin-token-check"){
+var tiC=document.getElementById("admtoken"); var tokC=tiC?tiC.value.trim():"";
+fetch(API+"/api/admin/token_check",{headers:{"x-admin-token":tokC}})
+.then(function(r){return r.json();}).then(function(j){
+  var msg="";
+  if(j.match){ msg="✅ 토큰 일치! 이제 로그인 버튼을 누르세요."; }
+  else if(!j.server_token_set){ msg="⚠ 서버에 토큰이 설정되지 않았습니다. Render에 RECO_ADMIN_TOKEN을 넣으세요."; }
+  else {
+    msg="❌ 불일치 — 서버 토큰 길이 "+j.server_len+"자, 입력한 값 "+j.your_len+"자. ";
+    if(j.server_len!==j.your_len){ msg+="(길이가 다름: 복사 누락이나 자동완성 의심)"; }
+    else { msg+="(길이 같음: 대소문자/숫자 0·1 혼동 의심. 첫글자"+(j.first_char_match?"O":"X")+" 끝글자"+(j.last_char_match?"O":"X")+")"; }
+  }
+  state.adminTokChk=msg; render();
+}).catch(function(){ state.adminTokChk="진단 호출 실패(네트워크)"; render(); });
 }
 else if(a==="admin-hide"||a==="admin-unhide"){
 adminModerate(a==="admin-hide"?"hide":"unhide", t.getAttribute("data-tt"), parseInt(t.getAttribute("data-tid"),10), parseInt(t.getAttribute("data-rid"),10));
