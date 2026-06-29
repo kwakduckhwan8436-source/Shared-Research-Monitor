@@ -39,6 +39,12 @@ ENDPOINTS = {
     "lockup":     BASE + "/GetStocIssuInfoService/getMandatoryDepositReturnInfo",
     # 기업기본정보
     "corp":       BASE + "/CorpBasicInfoService/getCorpOutline",
+    # 기업재무정보(요약재무제표) — 매출/영업이익/순이익/자산/부채 등
+    "finance":    BASE + "/GetFinaStatInfoService/getSummFinaStat",
+    # 주식배당정보(상세) — 배당기준일/지급일/배당률/주식종류 등
+    "dividend_detail": BASE + "/GetStocActInfoService/getStockDividend",
+    # 주식권리일정(배당·증자·교환·감자 등 권리행사 일정)
+    "rights_schedule": BASE + "/GetStocActInfoService/getRightSchedule",
 }
 
 # 운영자가 발급 후 Swagger 명세에서 확인한 정확한 URL로 덮어쓸 수 있다.
@@ -47,6 +53,9 @@ _ENV_KEYS = {
     "dividend": "RECO_CORP_EP_DIVIDEND", "rights": "RECO_CORP_EP_RIGHTS",
     "treasury": "RECO_CORP_EP_TREASURY", "lockup": "RECO_CORP_EP_LOCKUP",
     "corp": "RECO_CORP_EP_CORP",
+    "finance": "RECO_CORP_EP_FINANCE",
+    "dividend_detail": "RECO_CORP_EP_DIVDETAIL",
+    "rights_schedule": "RECO_CORP_EP_RIGHTSCHED",
 }
 
 
