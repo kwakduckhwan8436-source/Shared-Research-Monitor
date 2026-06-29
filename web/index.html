@@ -628,6 +628,10 @@ body.light .sd-bar i.pos{background:#cc3e36}body.light .sd-bar i.neg{background:
 .pd-ok{color:#5fd39a;font-size:10.5px}
 .pd-bad{color:#ff7a7a;font-size:10.5px}
 .pd-err{color:var(--muted);font-size:9.5px}
+.pd-advice{font-size:11px;color:var(--muted);padding:4px 0 8px;line-height:1.5}
+.pd-advice.ok{color:var(--teal)}
+.pd-big-ok{background:rgba(45,212,191,.12);border:1px solid rgba(45,212,191,.3);border-radius:9px;padding:11px 13px;font-size:13px;color:var(--teal);font-weight:600;margin:6px 0 10px;line-height:1.5}
+.pd-big-bad{background:rgba(231,173,72,.1);border:1px solid rgba(231,173,72,.3);border-radius:9px;padding:11px 13px;font-size:12.5px;color:#e7ad48;margin:6px 0 10px;line-height:1.6}
 .adm-empty,.adm-load{padding:24px;text-align:center;color:var(--muted);font-size:12px}
 .adm-banned{padding:14px 18px;border-top:1px solid var(--line)}
 .adm-stats{padding:14px 18px;border-top:1px solid var(--line)}
@@ -3584,16 +3588,37 @@ if(!d) return '<div class="adm-empty">점검 결과 없음</div>';
 if(d.loading) return '<div class="adm-load">점검 중…</div>';
 if(d.error) return '<div class="pd-err">'+esc(d.error)+(d.hint?'<br>'+esc(d.hint):'')+'</div>'+
   '<button class="adm-sbtn" data-action="corp-diag">다시 점검</button>';
-var NAMES={dividend:"배당",rights:"증자",treasury:"자사주",lockup:"보호예수",corp:"기업정보"};
+var NAMES={dividend:"배당",rights:"증자",treasury:"자사주",lockup:"보호예수",corp:"기업정보",finance:"재무",dividend_detail:"배당상세",rights_schedule:"권리일정"};
 var rows=(d.results||[]).map(function(r){
-var badge = r.ok? '<span class="pd-ok">● 정상 '+r.item_count+'건</span>' : '<span class="pd-bad">● 실패</span>';
-return '<div class="pd-row"><span class="pd-name">'+esc(NAMES[r.kind]||r.kind)+'</span>'+badge+
-(r.hint?'<span class="pd-err">'+esc(r.hint)+'</span>':'')+'</div>';
+var badge = r.ok? '<span class="pd-ok">● 정상 '+(r.item_count||0)+'건</span>' : '<span class="pd-bad">● 실패</span>';
+return '<div class="pd-row"><span class="pd-name">'+esc(NAMES[r.kind]||r.kind)+'</span>'+badge+'</div>'+
+(r.advice?'<div class="pd-advice'+(r.ok?' ok':'')+'">'+esc(r.advice)+'</div>':'');
 }).join('');
-return '<div class="pd-summary">정상 응답: <b>'+(d.alive||0)+'/'+(d.total||0)+'</b></div>'+
+// 종합 진단: 실패가 모두 같은 원인이면 한 줄로 요약
+var fails=(d.results||[]).filter(function(r){return !r.ok;});
+var summary='';
+if(fails.length===0){
+summary='<div class="pd-big-ok">✅ 모든 항목 정상! 기업이벤트가 작동합니다.</div>';
+}else{
+var codes={};
+fails.forEach(function(r){ if(r.code) codes[r.code]=(codes[r.code]||0)+1; });
+var topCode=Object.keys(codes).sort(function(a,b){return codes[b]-codes[a];})[0];
+var GUIDE={
+  register:'🔑 키가 아직 등록 전입니다. 활용신청 후 1시간 기다렸다 다시 점검하세요. 그래도 안 되면 Render에서 Encoding 키를 Decoding 키로 바꿔보세요.',
+  nodata:'📭 키·주소는 정상인데 자료가 없습니다. 오늘이 주말/공휴일이면 평일 오후 1시 이후에 다시 확인하세요.',
+  empty:'📭 정상 응답이나 자료가 비었습니다. 주말/공휴일일 수 있으니 평일에 재확인하세요.',
+  limit:'🚦 일일 호출 한도를 초과했습니다. 내일 다시 시도하세요.',
+  unknown:'🔧 응답 형식이 예상과 달라 주소 보정이 필요합니다. 아래 안내를 참고하세요.',
+  param:'🔧 요청 파라미터 문제입니다. 엔드포인트 주소 점검이 필요합니다.',
+  ip:'🌐 IP 제한 문제입니다. 공공데이터포털 마이페이지에서 IP 제한을 해제하세요.'
+};
+summary='<div class="pd-big-bad">'+(GUIDE[topCode]||'일부 항목이 실패했습니다. 아래 각 항목의 안내를 확인하세요.')+'</div>';
+}
+return summary+
+'<div class="pd-summary">정상 응답: <b>'+(d.alive||0)+'/'+(d.total||0)+'</b></div>'+
 '<div class="pd-list">'+rows+'</div>'+
-'<div class="adm-note">실패 시: 공공데이터포털에서 해당 데이터 활용신청 후, Swagger 명세의 정확한 '+
-'요청주소를 확인해 환경변수(RECO_CORP_EP_DIVIDEND 등)로 넣거나 ENDPOINTS 를 수정하세요. '+
+'<div class="adm-note">계속 실패하면: 공공데이터포털에서 해당 데이터 활용신청 여부를 확인하고, '+
+'상세기능의 정확한 요청주소를 환경변수(RECO_CORP_EP_DIVIDEND 등)로 넣으세요. '+
 '데이터는 전일 기준이라 주말엔 결과가 적을 수 있습니다.</div>'+
 '<button class="adm-sbtn" data-action="corp-diag">다시 점검</button>';
 }
