@@ -17,7 +17,7 @@ from typing import Any, Optional
 
 from app.llm import explain as explain_mod
 
-BUILD_VERSION = "2026.06.29-corp2"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
+BUILD_VERSION = "2026.06.29-corp3"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
 
 
 def _rsi_series(values: list, period: int = 14) -> list:
@@ -2372,6 +2372,28 @@ def register_routes(app: Any, ctx: Any) -> None:
             raise HTTPException(403, "운영자 권한이 필요합니다.")
         return {"reports": ctx.store.get_reports(status=status),
                 "open_count": ctx.store.report_count("open")}
+
+    @app.get("/api/admin/token_check")
+    def admin_token_check(request: Request) -> dict:
+        """토큰 진단 — 값은 노출하지 않고, 일치 여부·길이만 알려준다.
+        로그인이 계속 실패할 때 무엇이 다른지 확인하는 용도."""
+        cfg = (getattr(ctx.config, "admin_token", "") or "")
+        try:
+            hdr = (request.headers.get("x-admin-token") or "")
+        except Exception:
+            hdr = ""
+        cfg_s, hdr_s = cfg.strip(), hdr.strip()
+        return {
+            "server_token_set": bool(cfg_s),
+            "server_len": len(cfg_s),
+            "your_len": len(hdr_s),
+            "match": (hdr_s == cfg_s and bool(cfg_s)),
+            "first_char_match": bool(cfg_s and hdr_s and cfg_s[0] == hdr_s[0]),
+            "last_char_match": bool(cfg_s and hdr_s and cfg_s[-1] == hdr_s[-1]),
+            "hint": ("일치합니다." if (hdr_s == cfg_s and cfg_s)
+                     else "값이 다릅니다. 길이가 같은데 안 맞으면 대소문자/숫자(0,1) 혼동, "
+                          "길이가 다르면 입력 누락·자동완성·복사 오류일 수 있습니다."),
+        }
 
     @app.post("/api/admin/moderate")
     def admin_moderate(request: Request, body: dict = None) -> dict:
