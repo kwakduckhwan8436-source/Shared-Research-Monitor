@@ -2351,11 +2351,17 @@ return '<div class="modalwrap" data-action="admin-close"><div class="modal admin
 body+
 '</div></div>';
 }
-function loadAdminReports(){
+function loadAdminReports(silent){
 fetch(API+"/api/admin/reports?status=open",{headers:{"x-admin-token":state.adminToken||""}})
 .then(function(r){ if(!r.ok) throw new Error("권한 없음"); return r.json(); })
 .then(function(j){ state.adminReports=j; render(); })
-.catch(function(){ state.adminToken=null; state.adminReports=null; alert("운영자 인증 실패. 토큰을 확인하세요."); render(); });
+.catch(function(){
+  state.adminToken=null;
+  try{ localStorage.removeItem("reco_admin_tok"); }catch(e){}
+  state.adminReports=null;
+  if(!silent){ alert("운영자 인증 실패. 토큰을 확인하세요."); }
+  render();
+});
 }
 function adminModerate(action, tt, tid, rid, resolveOnly){
 var payload = resolveOnly ? {action:"resolve_only", target_type:tt, target_id:tid, report_id:rid}
@@ -4176,7 +4182,7 @@ getJSON("/api/legal/"+doc).then(function(j){ state.legalDoc=j; render(); })
 .catch(function(){ state.legalDoc={title:"오류",text:"문서를 불러올 수 없습니다."}; render(); });
 }
 else if(a==="legal-close"){ if(t.getAttribute("data-stop"))return; state.legalDoc=null; render(); }
-else if(a==="admin-open"){ state.adminOpen=true; state.adminReports=null; if(state.adminToken) loadAdminReports(); render(); }
+else if(a==="admin-open"){ state.adminOpen=true; state.adminReports=null; if(state.adminToken) loadAdminReports(true); render(); }
 else if(a==="admin-close"){ if(t.getAttribute("data-stop"))return; state.adminOpen=false; render(); }
 else if(a==="admin-login"){
 var ti2=document.getElementById("admtoken"); var tok=ti2?ti2.value.trim():"";
