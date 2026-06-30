@@ -17,7 +17,7 @@ from typing import Any, Optional
 
 from app.llm import explain as explain_mod
 
-BUILD_VERSION = "2026.06.29-corp5"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
+BUILD_VERSION = "2026.06.29-corp6"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
 
 
 def _rsi_series(values: list, period: int = 14) -> list:
@@ -2369,25 +2369,19 @@ def register_routes(app: Any, ctx: Any) -> None:
                             else "신고가 접수되었습니다. 운영자가 확인 후 조치합니다.")}
 
     @app.get("/api/admin/reports")
-    def admin_reports(request: Request, status: str = "open") -> dict:
+    def admin_reports(request: Request, status: str = "open", x_admin_token: str = "") -> dict:
         """운영자: 신고 목록(미처리/처리)."""
-        if not _is_admin(request):
+        if not _is_admin(request, x_admin_token):
             raise HTTPException(403, "운영자 권한이 필요합니다.")
         return {"reports": ctx.store.get_reports(status=status),
                 "open_count": ctx.store.report_count("open")}
 
     @app.get("/api/admin/token_check")
-    def admin_token_check(request: Request, x_admin_token: str = "") -> dict:
+    def admin_token_check(x_admin_token: str = "") -> dict:
         """토큰 진단 — 값은 노출하지 않고, 일치 여부·길이만 알려준다.
-        로그인이 계속 실패할 때 무엇이 다른지 확인하는 용도."""
+        request 객체 없이 쿼리 파라미터(x_admin_token)만 받는다(환경 호환성)."""
         cfg = (getattr(ctx.config, "admin_token", "") or "")
-        hdr = ""
-        try:
-            hdr = request.headers.get("x-admin-token") or ""
-        except Exception:
-            hdr = ""
-        if not hdr:
-            hdr = x_admin_token or ""
+        hdr = x_admin_token or ""
         cfg_s, hdr_s = cfg.strip(), hdr.strip()
         return {
             "server_token_set": bool(cfg_s),
