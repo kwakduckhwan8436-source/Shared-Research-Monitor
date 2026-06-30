@@ -3601,7 +3601,9 @@ var NAMES={dividend:"배당",rights:"증자",treasury:"자사주",lockup:"보호
 var rows=(d.results||[]).map(function(r){
 var badge = r.ok? '<span class="pd-ok">● 정상 '+(r.item_count||0)+'건</span>' : '<span class="pd-bad">● 실패</span>';
 return '<div class="pd-row"><span class="pd-name">'+esc(NAMES[r.kind]||r.kind)+'</span>'+badge+'</div>'+
-(r.advice?'<div class="pd-advice'+(r.ok?' ok':'')+'">'+esc(r.advice)+'</div>':'');
+(r.advice?'<div class="pd-advice'+(r.ok?' ok':'')+'">'+esc(r.advice)+'</div>':'')+
+(r.raw_error?'<div class="pd-advice" style="color:#e77">상세: '+esc(r.raw_error)+'</div>':'')+
+(r.endpoint?'<div class="pd-advice" style="font-size:9.5px;opacity:.7">주소: '+esc(r.endpoint)+'</div>':'');
 }).join('');
 // 종합 진단: 실패가 모두 같은 원인이면 한 줄로 요약
 var fails=(d.results||[]).filter(function(r){return !r.ok;});

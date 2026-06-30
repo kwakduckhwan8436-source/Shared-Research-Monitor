@@ -31,20 +31,20 @@ KST = timezone(timedelta(hours=9))
 # 공공데이터포털 금융 API 베이스(서비스별 경로). 운영자가 실제 명세에 맞게 조정 가능.
 BASE = "https://apis.data.go.kr/1160100/service"
 ENDPOINTS = {
-    # 공시정보 서비스(배당/증자/자기주식 등) — getDisclosure* 오퍼레이션
-    "dividend":   BASE + "/GetDisclInfoService/getDividendInfo",
-    "rights":     BASE + "/GetDisclInfoService/getCapitalIncreaseInfo",   # 유/무상증자
-    "treasury":   BASE + "/GetDisclInfoService/getTreasuryStockInfo",     # 자기주식
-    # 주식발행정보 서비스 — 보호예수 반환(해제)
+    # 공시정보 서비스(배당/증자/자기주식 등)
+    "dividend":   BASE + "/GetStocDiviInfoService/getDiviInfo",            # 주식배당정보(확인됨)
+    "rights":     BASE + "/GetDisclInfoService/getCapitalIncreaseInfo",    # 유/무상증자(추정)
+    "treasury":   BASE + "/GetDisclInfoService/getTreasuryStockInfo",      # 자기주식(추정)
+    # 주식발행정보 서비스 — 의무보호예수 반환(해제)
     "lockup":     BASE + "/GetStocIssuInfoService/getMandatoryDepositReturnInfo",
-    # 기업기본정보
-    "corp":       BASE + "/CorpBasicInfoService/getCorpOutline",
-    # 기업재무정보(요약재무제표) — 매출/영업이익/순이익/자산/부채 등
+    # 기업기본정보(확인됨: V2)
+    "corp":       BASE + "/GetCorpBasicInfoService_V2/getCorpOutline_V2",
+    # 기업재무정보(요약재무제표)(추정)
     "finance":    BASE + "/GetFinaStatInfoService/getSummFinaStat",
-    # 주식배당정보(상세) — 배당기준일/지급일/배당률/주식종류 등
-    "dividend_detail": BASE + "/GetStocActInfoService/getStockDividend",
-    # 주식권리일정(배당·증자·교환·감자 등 권리행사 일정)
-    "rights_schedule": BASE + "/GetStocActInfoService/getRightSchedule",
+    # 주식배당정보(상세)(확인됨)
+    "dividend_detail": BASE + "/GetStocDiviInfoService/getDiviInfo",
+    # 주식권리일정(확인됨)
+    "rights_schedule": BASE + "/GetStocRighScheService/getRighExerReasSche",
 }
 
 # 운영자가 발급 후 Swagger 명세에서 확인한 정확한 URL로 덮어쓸 수 있다.
@@ -194,7 +194,8 @@ class PublicDataProvider:
                 advice = "주소(도메인)를 찾지 못했습니다. 엔드포인트 URL을 점검하세요."
             elif "certificate" in le.lower() or "SSL" in le:
                 advice = "보안 인증서 오류입니다. http/https 또는 URL을 점검하세요."
-            return {"kind": kind, "ok": False, "advice": advice, "raw_error": le[:120]}
+            return {"kind": kind, "ok": False, "advice": advice,
+                    "raw_error": le[:160], "endpoint": ep}
         up = text.upper()
         items = self.parse_items(text)
         if items:
