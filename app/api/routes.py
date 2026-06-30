@@ -17,7 +17,7 @@ from typing import Any, Optional
 
 from app.llm import explain as explain_mod
 
-BUILD_VERSION = "2026.06.29-corp6"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
+BUILD_VERSION = "2026.06.29-corp7"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
 
 
 def _rsi_series(values: list, period: int = 14) -> list:
@@ -165,6 +165,13 @@ def register_routes(app: Any, ctx: Any) -> None:
         if not hdr and explicit_token:
             hdr = explicit_token.strip()
         return hdr == tok
+
+    def _is_admin_token(token: str) -> bool:
+        """request 객체 없이 토큰 문자열만으로 검증(환경 호환)."""
+        tok = (getattr(ctx.config, "admin_token", "") or "").strip()
+        if not tok:
+            return False
+        return (token or "").strip() == tok
 
     @app.get("/api/health")
     def health() -> dict:
@@ -1477,10 +1484,10 @@ def register_routes(app: Any, ctx: Any) -> None:
         return out
 
     @app.get("/api/feed/policy/diag")
-    def feed_policy_diag(request: Request) -> dict:
+    def feed_policy_diag(x_admin_token: str = "") -> dict:
         """정책 RSS 진단 — 각 부처 주소가 실제로 응답·파싱되는지 운영자가 확인.
         어떤 주소가 살아있는지/죽었는지 표로 보여줘 URL 보정에 사용."""
-        if not _is_admin(request):
+        if not _is_admin_token(x_admin_token):
             raise HTTPException(403, "운영자 권한이 필요합니다.")
         prov = getattr(ctx, "policy_news", None)
         if prov is None:
@@ -1588,10 +1595,10 @@ def register_routes(app: Any, ctx: Any) -> None:
         return _corp_events("rights_schedule", params, ttl=3600)
 
     @app.get("/api/corp/diag")
-    def corp_diag(request: Request) -> dict:
+    def corp_diag(x_admin_token: str = "") -> dict:
         """운영자용 진단 — 각 엔드포인트를 실제 호출해 성공/실패를 점검.
         DATA_GO_KR_KEY 발급 후 주소가 맞는지 확인하는 용도. 키 값은 노출 안 함."""
-        if not _is_admin(request):
+        if not _is_admin_token(x_admin_token):
             return {"ok": False, "error": "운영자 토큰이 필요합니다(x-admin-token)."}
         prov = getattr(ctx, "public_data", None)
         if prov is None:
@@ -1825,10 +1832,10 @@ def register_routes(app: Any, ctx: Any) -> None:
         return evs
 
     @app.get("/api/calendar/coverage")
-    def calendar_coverage(request: Request) -> dict:
+    def calendar_coverage(x_admin_token: str = "") -> dict:
         """운영자용 — 내장 연간 일정(FOMC·중앙은행 등)이 어느 해까지 채워졌는지.
         연말에 다음 해 일정 갱신이 필요한지 알려준다."""
-        if not _is_admin(request):
+        if not _is_admin_token(x_admin_token):
             return {"ok": False, "error": "운영자 토큰이 필요합니다(x-admin-token)."}
         try:
             from app.core.econ_events import schedule_coverage
@@ -2117,9 +2124,9 @@ def register_routes(app: Any, ctx: Any) -> None:
             return {"txt": txt}
 
     @app.get("/api/admin/calendar")
-    def admin_calendar_get(request: Request) -> dict:
+    def admin_calendar_get(x_admin_token: str = "") -> dict:
         """운영자: 등록된 캘린더 일정 조회."""
-        if not _is_admin(request):
+        if not _is_admin_token(x_admin_token):
             raise HTTPException(403, "운영자 권한이 필요합니다.")
         try:
             row = ctx.store.get_setting("market_events")
@@ -2369,9 +2376,9 @@ def register_routes(app: Any, ctx: Any) -> None:
                             else "신고가 접수되었습니다. 운영자가 확인 후 조치합니다.")}
 
     @app.get("/api/admin/reports")
-    def admin_reports(request: Request, status: str = "open", x_admin_token: str = "") -> dict:
-        """운영자: 신고 목록(미처리/처리)."""
-        if not _is_admin(request, x_admin_token):
+    def admin_reports(status: str = "open", x_admin_token: str = "") -> dict:
+        """운영자: 신고 목록(미처리/처리). request 없이 쿼리 토큰만 사용."""
+        if not _is_admin_token(x_admin_token):
             raise HTTPException(403, "운영자 권한이 필요합니다.")
         return {"reports": ctx.store.get_reports(status=status),
                 "open_count": ctx.store.report_count("open")}
@@ -2416,9 +2423,9 @@ def register_routes(app: Any, ctx: Any) -> None:
         return {"ok": True}
 
     @app.get("/api/admin/banned_words")
-    def admin_banned_get(request: Request) -> dict:
+    def admin_banned_get(x_admin_token: str = "") -> dict:
         """운영자: 금지어 목록 조회."""
-        if not _is_admin(request):
+        if not _is_admin_token(x_admin_token):
             raise HTTPException(403, "운영자 권한이 필요합니다.")
         return {"words": _banned_words()}
 
@@ -2433,17 +2440,17 @@ def register_routes(app: Any, ctx: Any) -> None:
         return {"ok": True, "words": words}
 
     @app.get("/api/admin/status")
-    def admin_status(request: Request) -> dict:
+    def admin_status(x_admin_token: str = "") -> dict:
         """운영자 인증 확인 + 미처리 신고 수."""
-        ok = _is_admin(request)
+        ok = _is_admin_token(x_admin_token)
         return {"is_admin": ok,
                 "open_reports": ctx.store.report_count("open") if ok else None,
                 "admin_enabled": bool(getattr(ctx.config, "admin_token", ""))}
 
     @app.get("/api/admin/stats")
-    def admin_stats(request: Request, days: int = 7) -> dict:
+    def admin_stats(days: int = 7, x_admin_token: str = "") -> dict:
         """운영자: 일별 접속자·채팅·게시글 수 + 신고 처리 현황(집계 수치만)."""
-        if not _is_admin(request):
+        if not _is_admin_token(x_admin_token):
             raise HTTPException(403, "운영자 권한이 필요합니다.")
         try:
             return {"ok": True, "stats": ctx.store.admin_stats(days=max(1, min(days, 31)))}

@@ -4087,29 +4087,29 @@ else if(a==="corp-search"){
 }
 else if(a==="policy-diag"){
 state.policyDiag={loading:true}; render();
-fetch(API+"/api/feed/policy/diag",{headers:{"x-admin-token":state.adminToken||""}})
+fetch(API+"/api/feed/policy/diag?x_admin_token="+encodeURIComponent(state.adminToken||""),{headers:{"x-admin-token":state.adminToken||""}})
 .then(function(r){return r.json();}).then(function(j){ state.policyDiag=j; render(); })
 .catch(function(){ state.policyDiag={alive:0,total:0,sources:[],error:"점검 실패"}; render(); });
 }
 else if(a==="corp-diag"){
 state.corpDiag={loading:true}; render();
-fetch(API+"/api/corp/diag",{headers:{"x-admin-token":state.adminToken||""}})
+fetch(API+"/api/corp/diag?x_admin_token="+encodeURIComponent(state.adminToken||""),{headers:{"x-admin-token":state.adminToken||""}})
 .then(function(r){return r.json();}).then(function(j){ state.corpDiag=j; render(); })
 .catch(function(){ state.corpDiag={error:"점검 실패(네트워크)"}; render(); });
 }
 else if(a==="cal-coverage"){
 state.calCov={loading:true}; render();
-fetch(API+"/api/calendar/coverage",{headers:{"x-admin-token":state.adminToken||""}})
+fetch(API+"/api/calendar/coverage?x_admin_token="+encodeURIComponent(state.adminToken||""),{headers:{"x-admin-token":state.adminToken||""}})
 .then(function(r){return r.json();}).then(function(j){ state.calCov=j; render(); })
 .catch(function(){ state.calCov={error:"점검 실패(네트워크)"}; render(); });
 }
 else if(a==="admin-stats-load"){
-fetch(API+"/api/admin/stats?days=7",{headers:{"x-admin-token":state.adminToken||""}})
+fetch(API+"/api/admin/stats?days=7&x_admin_token="+encodeURIComponent(state.adminToken||""),{headers:{"x-admin-token":state.adminToken||""}})
 .then(function(r){return r.json();}).then(function(j){ state.adminStats=(j&&j.stats)||null; render(); })
 .catch(function(){ alert("통계 불러오기 실패"); });
 }
 else if(a==="admin-banned-load"){
-fetch(API+"/api/admin/banned_words",{headers:{"x-admin-token":state.adminToken||""}})
+fetch(API+"/api/admin/banned_words?x_admin_token="+encodeURIComponent(state.adminToken||""),{headers:{"x-admin-token":state.adminToken||""}})
 .then(function(r){return r.json();}).then(function(j){ state.adminBanned=j.words||[]; render(); })
 .catch(function(){ alert("불러오기 실패"); });
 }
@@ -4147,7 +4147,7 @@ render();
 }
 else if(a==="cal-admin-open"){
 state.calAdminOpen=true; state.calAdminList=null;
-fetch(API+"/api/admin/calendar",{headers:{"x-admin-token":state.adminToken||""}})
+fetch(API+"/api/admin/calendar?x_admin_token="+encodeURIComponent(state.adminToken||""),{headers:{"x-admin-token":state.adminToken||""}})
 .then(function(r){return r.json();}).then(function(j){ state.calAdminList=j.events||[]; render(); })
 .catch(function(){ state.calAdminList=[]; render(); });
 render();
