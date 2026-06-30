@@ -4187,7 +4187,7 @@ loadAdminReports();
 }
 else if(a==="admin-token-check"){
 var tiC=document.getElementById("admtoken"); var tokC=tiC?tiC.value.trim():"";
-fetch(API+"/api/admin/token_check",{headers:{"x-admin-token":tokC}})
+fetch(API+"/api/admin/token_check?x_admin_token="+encodeURIComponent(tokC),{headers:{"x-admin-token":tokC}})
 .then(function(r){return r.json();}).then(function(j){
   var msg="";
   if(j.match){ msg="✅ 토큰 일치! 이제 로그인 버튼을 누르세요."; }
