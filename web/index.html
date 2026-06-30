@@ -2352,7 +2352,7 @@ body+
 '</div></div>';
 }
 function loadAdminReports(silent){
-fetch(API+"/api/admin/reports?status=open",{headers:{"x-admin-token":state.adminToken||""}})
+fetch(API+"/api/admin/reports?status=open&x_admin_token="+encodeURIComponent(state.adminToken||""),{headers:{"x-admin-token":state.adminToken||""}})
 .then(function(r){ if(!r.ok) throw new Error("권한 없음"); return r.json(); })
 .then(function(j){ state.adminReports=j; render(); })
 .catch(function(){
