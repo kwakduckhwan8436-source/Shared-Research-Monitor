@@ -17,7 +17,7 @@ from typing import Any, Optional
 
 from app.llm import explain as explain_mod
 
-BUILD_VERSION = "2026.06.29-corp3"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
+BUILD_VERSION = "2026.06.29-corp4"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
 
 
 def _rsi_series(values: list, period: int = 14) -> list:
@@ -153,14 +153,17 @@ def register_routes(app: Any, ctx: Any) -> None:
                 return w
         return None
 
-    def _is_admin(request) -> bool:
+    def _is_admin(request, explicit_token: str = "") -> bool:
         tok = (getattr(ctx.config, "admin_token", "") or "").strip()
         if not tok:
             return False
+        hdr = ""
         try:
             hdr = (request.headers.get("x-admin-token") or "").strip()
         except Exception:
             hdr = ""
+        if not hdr and explicit_token:
+            hdr = explicit_token.strip()
         return hdr == tok
 
     @app.get("/api/health")
@@ -2374,14 +2377,17 @@ def register_routes(app: Any, ctx: Any) -> None:
                 "open_count": ctx.store.report_count("open")}
 
     @app.get("/api/admin/token_check")
-    def admin_token_check(request: Request) -> dict:
+    def admin_token_check(request: Request, x_admin_token: str = "") -> dict:
         """토큰 진단 — 값은 노출하지 않고, 일치 여부·길이만 알려준다.
         로그인이 계속 실패할 때 무엇이 다른지 확인하는 용도."""
         cfg = (getattr(ctx.config, "admin_token", "") or "")
+        hdr = ""
         try:
-            hdr = (request.headers.get("x-admin-token") or "")
+            hdr = request.headers.get("x-admin-token") or ""
         except Exception:
             hdr = ""
+        if not hdr:
+            hdr = x_admin_token or ""
         cfg_s, hdr_s = cfg.strip(), hdr.strip()
         return {
             "server_token_set": bool(cfg_s),
