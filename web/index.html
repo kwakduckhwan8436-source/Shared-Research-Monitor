@@ -1358,7 +1358,7 @@ cal: null, calY: 0, calM: 0, calFilter: {}, calAdminOpen: false, calAdminList: n
 glossaryOpen: false, glossary: null, glossQ: "", glossCat: "전체", dguideOpen: false, dguide: null,
 startOpen: false, startGuide: null, startTab: "guide",
 stock: null, stockLoading: false, live: null, newsTs: "",
-feedDisc: null, feedNews: null, feedReports: null, feedPolicy: null, feedHot: null, modal: false, reports: null, reportsLoading: false,
+feedDisc: null, feedNews: null, feedReports: null, feedPolicy: null, feedHot: null, hotOpen: false, hotMin: false, hotPos: null, modal: false, reports: null, reportsLoading: false,
 chat: [], chatLastId: 0, chatUser: "익명", reacts: {}, indices: null, fx: null, corpOpen: false, corpTab: "dividend", corpData: null, corpMin: false, corpPos: null, corpQuery: "", calcOpen: false, calcTab: "yield", calcVals: {}, calcMin: false, calcPos: null, calcW: 520, recsCache: {},
 notice: "", emojiOpen: false, briefing: null, briefingOpen: false, presence: {site:0,chat:0},
 mflowOpen: false, mflow: null, mflowMkt: "KOSPI",
@@ -1436,6 +1436,7 @@ return '<div class="top">'+
 '<button class="btn" data-action="board">🐞 게시판</button>'+
 '<button class="btn" data-action="glossary">📖 용어사전</button>'+
 '<button class="btn" data-action="dguide">📑 공시읽기</button>'+
+'<button class="btn" data-action="hotdisc">🔥 주요공시</button>'+
 '<button class="btn" data-action="calc">🧮 투자계산기</button>'+
 '<button class="btn" data-action="startguide">🚀 주식입문</button>'+
 '<span class="meta-divider"></span>'+
@@ -2104,6 +2105,32 @@ return '<div class="modalwrap" data-action="dguide-close"><div class="modal glos
 '<div class="gloss-list">'+body+'</div>'+
 '<div class="note" style="padding:10px 16px">전자공시(DART) 유형을 쉽게 이해하기 위한 자체 작성 가이드입니다. 투자 판단의 근거가 아닙니다.</div>'+
 '</div></div>';
+}
+function hotDiscModalHTML(){
+if(!state.hotOpen) return '';
+var f=state.feedHot;
+var body;
+if(!f){ body='<div class="adm-load">불러오는 중…</div>'; }
+else if(f.error){ body='<div class="ce-note">'+esc(f.error)+'</div>'; }
+else if(!f.items || !f.items.length){ body='<div class="ce-note">'+esc((f&&f.note)||"현재 표시할 주요 공시가 없습니다(장 시간외/휴장일 가능).")+'</div>'; }
+else {
+  body=f.items.map(function(it){ return hotItemHTML(it); }).join("")+
+    '<div class="policy-attr">📋 '+esc(f.attribution||"금융감독원 전자공시(DART) · 제목·링크만 · 투자권유 아님")+'</div>';
+}
+var mini=state.hotMin?' ce-min':'';
+var pos=state.hotPos;
+var style='max-width:560px;width:560px;'+
+  (pos?('position:fixed;left:'+pos.x+'px;top:'+pos.y+'px;margin:0;transform:none;'):'');
+return '<div class="floatwrap'+mini+'"><div class="modal float-win'+mini+'" data-stop="1" data-poskey="hotPos" style="'+style+'">'+
+  '<div class="modal-h float-drag"><b>🔥 오늘의 주요 공시</b>'+
+    '<span class="ce-winbtns">'+
+      '<button class="ce-winbtn" data-action="hot-min" title="'+(state.hotMin?'확장':'축소')+'">'+(state.hotMin?'⊡':'⊟')+'</button>'+
+      '<button class="ce-winbtn" data-action="hot-close" title="닫기">✕</button>'+
+    '</span></div>'+
+  (state.hotMin?'':(
+    '<div class="feedbody" style="max-height:60vh;overflow-y:auto">'+body+'</div>'
+  ))+
+  '</div></div>';
 }
 function calcModalHTML(){
 if(!state.calcOpen) return '';
@@ -3093,8 +3120,7 @@ modeBanner()+
 '<div class="main dash4 mtab-'+(state.mTab||'cal')+'">'+
 '<div class="col-screener mpane" data-pane="cal">'+leftColHTML(items)+'</div>'+
 '<div class="col-stack mpane" data-pane="disc">'+
-'<div class="feedcol scell-top" id="feed-hot">'+feedPanelHTML("hot")+'</div>'+
-'<div class="feedcol scell-mid" id="feed-reports">'+feedPanelHTML("reports")+'</div>'+
+'<div class="feedcol scell-top" id="feed-reports">'+feedPanelHTML("reports")+'</div>'+
 '<div class="feedcol scell-bot" id="feed-disc">'+feedPanelHTML("disc")+'</div>'+
 '</div>'+
 '<div class="col-newsstack mpane" data-pane="news">'+
@@ -3123,6 +3149,7 @@ glossaryModalHTML()+
 dguideModalHTML()+
 startGuideModalHTML()+
 corpEventsModalHTML()+
+hotDiscModalHTML()+
 calcModalHTML()+
 toastHTML();
 // 열려있는 모든 모달에 드래그·리사이즈 핸들 자동 부착
@@ -3463,7 +3490,6 @@ if(el) el.innerHTML=feedPanelHTML(kind);
 function pollFeeds(){
 if(state.mode==="sample") return;
 getJSON("/api/feed/disclosures?limit=60").then(function(j){ state.feedDisc=j; patchFeed("disc"); }).catch(function(){});
-getJSON("/api/feed/hot_disclosures?limit=20").then(function(j){ state.feedHot=j; patchFeed("hot"); }).catch(function(){});
 }
 function pollNewsFeed(){
 if(state.mode==="sample") return;
@@ -4099,6 +4125,12 @@ else if(a==="corpevents"){
   state.corpOpen=true; state.corpMin=false; state.corpTab=state.corpTab||"dividend"; render();
   loadCorpEvents(state.corpTab);
 }
+else if(a==="hotdisc"){
+  state.hotOpen=true; state.hotMin=false; render();
+  getJSON("/api/feed/hot_disclosures?limit=30").then(function(j){ state.feedHot=j; if(state.hotOpen) render(); }).catch(function(){ if(!state.feedHot){ state.feedHot={error:"불러오기 실패"}; } if(state.hotOpen) render(); });
+}
+else if(a==="hot-close"){ if(t.getAttribute("data-stop"))return; state.hotOpen=false; render(); }
+else if(a==="hot-min"){ state.hotMin=!state.hotMin; render(); }
 else if(a==="calc"){ state.calcOpen=true; state.calcMin=false; state.calcTab=state.calcTab||"yield"; render(); }
 else if(a==="calc-close"){ if(t.getAttribute("data-stop"))return; state.calcOpen=false; render(); }
 else if(a==="calc-min"){ state.calcMin=!state.calcMin; render(); }
