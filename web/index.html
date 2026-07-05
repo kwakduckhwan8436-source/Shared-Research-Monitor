@@ -192,7 +192,7 @@ background:linear-gradient(135deg,var(--panel2),var(--panel));border:1px solid v
 .cal-dot{width:6px;height:6px;border-radius:50%;display:inline-block}
 .cal-dot.holiday{background:#ff5b5b}.cal-dot.expiry{background:#e7ad48}
 .cal-dot.dividend{background:#7fe6b0}.cal-dot.custom{background:#6fa8ff}
-.cal-dot.econ{background:#c98bff}.cal-dot.disclosure{background:#f0a868}.cal-dot.filing{background:#5b9dff}.cal-dot.global{background:#4db8e8}
+.cal-dot.econ{background:#c98bff}.cal-dot.disclosure{background:#f0a868}.cal-dot.filing{background:#5b9dff}.cal-dot.global{background:#4db8e8}.cal-dot.market{background:#e7ad48}
 .cal-legend{display:flex;flex-wrap:wrap;gap:9px;margin:12px 0 6px;font-size:10px;color:var(--muted)}
 .cal-legend span{display:inline-flex;align-items:center;gap:4px}
 .cal-list{margin-top:10px;display:flex;flex-direction:column;gap:5px;max-height:170px;overflow-y:auto}
@@ -200,7 +200,7 @@ background:linear-gradient(135deg,var(--panel2),var(--panel));border:1px solid v
 .cal-ev:hover{transform:translateX(2px)}
 .cal-ev.holiday{border-left-color:#ff5b5b}.cal-ev.expiry{border-left-color:#e7ad48}
 .cal-ev.dividend{border-left-color:#7fe6b0}.cal-ev.custom{border-left-color:#6fa8ff}
-.cal-ev.econ{border-left-color:#c98bff}.cal-ev.disclosure{border-left-color:#f0a868}.cal-ev.filing{border-left-color:#5b9dff}.cal-ev.global{border-left-color:#4db8e8}
+.cal-ev.econ{border-left-color:#c98bff}.cal-ev.disclosure{border-left-color:#f0a868}.cal-ev.filing{border-left-color:#5b9dff}.cal-ev.global{border-left-color:#4db8e8}.cal-ev.market{border-left-color:#e7ad48}
 a.cal-ev{text-decoration:none}
 a.cal-ev:hover{background:var(--panel3)}
 .cal-ev-d{font-size:11px;font-weight:800;color:var(--ink);flex:none;min-width:34px}
@@ -1310,6 +1310,9 @@ a.ntitle:hover{color:var(--blue);text-decoration:underline}
 .ntag.risk{background:var(--red-d);color:#f3a59f}
 .ntag.ev{background:var(--blue-d);color:#a9cdf8}
 .ntag.biz{background:rgba(45,212,191,.14);color:var(--teal);border:1px solid rgba(45,212,191,.25)}
+.pol-filter{display:flex;gap:6px;padding:7px 10px;border-bottom:1px solid var(--line);background:var(--panel2)}
+.pol-fbtn{font-size:11px;padding:4px 10px;border-radius:12px;border:1px solid var(--line2);background:var(--panel3);color:var(--ink2);cursor:pointer;white-space:nowrap}
+.pol-fbtn.on{background:var(--teal);color:#04211d;border-color:var(--teal);font-weight:700}
 .ntag.src-disc{background:var(--panel3);color:var(--ink2)}
 .ntag.src-news{background:var(--teal-d);color:#9fded0}
 .dgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
@@ -1366,7 +1369,7 @@ cal: null, calY: 0, calM: 0, calFilter: {}, calAdminOpen: false, calAdminList: n
 glossaryOpen: false, glossary: null, glossQ: "", glossCat: "전체", dguideOpen: false, dguide: null,
 startOpen: false, startGuide: null, startTab: "guide",
 stock: null, stockLoading: false, live: null, newsTs: "",
-feedDisc: null, feedNews: null, feedReports: null, feedPolicy: null, feedHot: null, hotOpen: false, hotMin: false, hotPos: null, modal: false, reports: null, reportsLoading: false,
+feedDisc: null, feedNews: null, feedReports: null, feedPolicy: null, feedHot: null, policyFilter: "all", hotOpen: false, hotMin: false, hotPos: null, modal: false, reports: null, reportsLoading: false,
 chat: [], chatLastId: 0, chatUser: "익명", reacts: {}, indices: null, fx: null, corpOpen: false, corpTab: "dividend", corpData: null, corpMin: false, corpPos: null, corpQuery: "", calcOpen: false, calcTab: "yield", calcVals: {}, calcMin: false, calcPos: null, calcW: 520, recsCache: {},
 notice: "", emojiOpen: false, briefing: null, briefingOpen: false, presence: {site:0,chat:0},
 mflowOpen: false, mflow: null, mflowMkt: "KOSPI",
@@ -2019,7 +2022,18 @@ return head+'<div class="feedbody">'+items+'</div>'+
 }
 if(kind==="policy"){
 var attr = (f&&f.attribution)? f.attribution : "공공누리 — 정책브리핑(korea.kr) 및 각 부처 보도자료";
-return head+'<div class="feedbody">'+items+'</div>'+
+var pf = state.policyFilter||"all";
+// 증시관련 필터: biz_tags가 있는 항목만
+var allItems = (f&&f.items)? f.items : [];
+var shown = (pf==="biz") ? allItems.filter(function(it){ return (it.biz_tags||[]).length>0; }) : allItems;
+var filterBar = '<div class="pol-filter">'+
+  '<button class="pol-fbtn'+(pf==="all"?" on":"")+'" data-action="policy-filter" data-pf="all">전체 '+allItems.length+'</button>'+
+  '<button class="pol-fbtn'+(pf==="biz"?" on":"")+'" data-action="policy-filter" data-pf="biz">📈 증시관련 '+allItems.filter(function(it){return (it.biz_tags||[]).length>0;}).length+'</button>'+
+  '</div>';
+var polItems = shown.length
+  ? shown.map(function(it){ return feedItemHTML(it, false); }).join("")
+  : '<div class="note">'+(pf==="biz"?"증시 관련 키워드가 있는 정책이 아직 없습니다.":emptyMsg)+'</div>';
+return head+filterBar+'<div class="feedbody">'+polItems+'</div>'+
 '<div class="policy-attr">📋 '+esc(attr)+' · 제목·링크만 제공(본문 미복제)</div>';
 }
 return head+'<div class="feedbody">'+items+'</div>';
@@ -4168,6 +4182,7 @@ else if(a==="corp-search"){
   state.corpQuery=(qel&&qel.value.trim())||"";
   if(state.corpQuery){ loadCorpEvents(state.corpTab, true); }
 }
+else if(a==="policy-filter"){ state.policyFilter=t.getAttribute("data-pf")||"all"; patchFeed("policy"); }
 else if(a==="policy-diag"){
 state.policyDiag={loading:true}; render();
 fetch(API+"/api/feed/policy/diag?x_admin_token="+encodeURIComponent(state.adminToken||""),{headers:{"x-admin-token":state.adminToken||""}})

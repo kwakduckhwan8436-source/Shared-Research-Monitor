@@ -241,6 +241,22 @@ def econ_events(year: int, month: int) -> list[dict]:
         out.append({"date": last.isoformat(), "type": "econ",
                     "label": "다수 ETF 분배금 지급 기준일(분배락, 참고)"})
 
+    # 선물·옵션 동시만기일('네 마녀의 날') — 3·6·9·12월 둘째 목요일(한국)
+    if month in (3, 6, 9, 12):
+        wm = _nth_weekday(year, month, 3, 2)   # 목요일=3, 둘째 주
+        out.append({"date": wm.isoformat(), "type": "expiry",
+                    "label": "선물·옵션 동시만기일(네 마녀의 날) — 변동성 주의"})
+
+    # 분기 배당락일 — 분기말 배당기준일의 직전 영업일(D-1)
+    if month in (3, 6, 9, 12):
+        q_end = _last_business_day(year, month)
+        exd = q_end - timedelta(days=1)
+        while _is_weekend(exd):
+            exd = exd - timedelta(days=1)
+        tag = "연말 결산배당" if month == 12 else "분기배당"
+        out.append({"date": exd.isoformat(), "type": "dividend",
+                    "label": f"{tag} 배당락일(참고) — 배당 받으려면 전일까지 매수"})
+
     # 법정 공시 제출기한(12월 결산법인)
     if month in _FILING_DEADLINES:
         ds, label = _FILING_DEADLINES[month]
