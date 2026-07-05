@@ -413,6 +413,7 @@ gap:1px;background:var(--line);min-height:0;overflow:hidden}
 .col-newsstack{display:flex;flex-direction:column;gap:1px;background:var(--line);min-height:0;overflow:hidden}
 .ncell-top{flex:1 1 58%;min-height:0;display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
 .ncell-bot{flex:1 1 42%;min-height:0;display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
+.ncell-full{flex:1 1 100%;min-height:0;display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
 .policy-attr{font-size:9.5px;color:var(--muted);padding:6px 12px;border-top:1px solid var(--line);background:var(--panel2);line-height:1.4}
 .hot-item .hot-top{display:flex;align-items:center;gap:7px;margin-bottom:3px;flex-wrap:wrap}
 .hot-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:6px;white-space:nowrap}
@@ -1456,7 +1457,6 @@ return '<div class="top">'+
 '<button class="btn" data-action="glossary">📖 용어사전</button>'+
 '<button class="btn" data-action="dguide">📑 공시읽기</button>'+
 '<button class="btn" data-action="hotdisc">🔥 주요공시</button>'+
-'<button class="btn" data-action="ipo">🎯 공모주</button>'+
 '<button class="btn" data-action="calc">🧮 투자계산기</button>'+
 '<button class="btn" data-action="startguide">🚀 주식입문</button>'+
 '<span class="meta-divider"></span>'+
@@ -3196,13 +3196,11 @@ modeBanner()+
 '<div class="main dash4 mtab-'+(state.mTab||'cal')+'">'+
 '<div class="col-screener mpane" data-pane="cal">'+leftColHTML(items)+'</div>'+
 '<div class="col-stack mpane" data-pane="disc">'+
-'<div class="feedcol scell-top" id="feed-ipo">'+feedPanelHTML("ipo")+'</div>'+
-'<div class="feedcol scell-mid" id="feed-reports">'+feedPanelHTML("reports")+'</div>'+
+'<div class="feedcol scell-top" id="feed-reports">'+feedPanelHTML("reports")+'</div>'+
 '<div class="feedcol scell-bot" id="feed-disc">'+feedPanelHTML("disc")+'</div>'+
 '</div>'+
 '<div class="col-newsstack mpane" data-pane="news">'+
-'<div class="feedcol ncell-top" id="feed-news">'+feedPanelHTML("news")+'</div>'+
-'<div class="feedcol ncell-bot" id="feed-policy">'+feedPanelHTML("policy")+'</div>'+
+'<div class="feedcol ncell-full" id="feed-news">'+feedPanelHTML("news")+'</div>'+
 '</div>'+
 '<div class="feedcol gcell mpane" data-pane="chat" id="chat-panel">'+chatPanelHTML()+'</div>'+
 '</div>'+
@@ -3227,7 +3225,6 @@ dguideModalHTML()+
 startGuideModalHTML()+
 corpEventsModalHTML()+
 hotDiscModalHTML()+
-ipoModalHTML()+
 calcModalHTML()+
 toastHTML();
 // 열려있는 모든 모달에 드래그·리사이즈 핸들 자동 부착
@@ -3617,15 +3614,11 @@ mktTimer=setInterval(updateMktPill, 30000);   // 장 상태 30초 갱신(시간 
 if(state.mode==="sample") return;
 // 즉시 보이는 것 먼저(공시·캘린더·뉴스·채팅), 덜 급한 것은 살짝 뒤로 분산 → 첫 화면 부드럽게
 scheduleFeeds(); pollNewsFeed(); pollChat(); pollNotice();
-setTimeout(function(){ pollPolicyFeed(); }, 400);     // 정책 피드 0.4초 뒤
-setTimeout(function(){ pollIpoFeed(); }, 700);        // 공모주 피드 0.7초 뒤
 setTimeout(function(){ pollReports(); }, 700);        // 리포트 0.7초 뒤
 pollIndices(); pollRegime();                          // 공개모드면 즉시 반환(부담 적음)
 setTimeout(function(){ pollFx(); }, 500);             // 환율(안전한 공공 시세) 0.5초 뒤
 setInterval(pollFx, 1800000);                        // 환율 30분
 feedNewsTimer=setInterval(pollNewsFeed, 10000);  // 실시간 뉴스 10초(해외장 시간에도 빠르게)
-setInterval(pollPolicyFeed, 300000);             // 정부정책 5분(자동 갱신 체감 개선)
-setInterval(pollIpoFeed, 1800000);               // 공모주 30분(자주 안 바뀜)
 repTimer=setInterval(pollReports, 45000);   // 리포트 45초
 chatTimer=setInterval(pollChat, 3000);      // 채팅 3초
 noticeTimer=setInterval(function(){ pollNotice(); }, 20000); // 공지 20초(접속자는 채팅 폴링이 담당)
