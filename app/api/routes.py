@@ -17,7 +17,7 @@ from typing import Any, Optional
 
 from app.llm import explain as explain_mod
 
-BUILD_VERSION = "2026.06.30-rss2"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
+BUILD_VERSION = "2026.06.30-rss3"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
 
 
 def _rsi_series(values: list, period: int = 14) -> list:
@@ -1551,6 +1551,41 @@ def register_routes(app: Any, ctx: Any) -> None:
         if not items:
             out["error"] = "정책 자료를 불러오지 못했습니다(운영자 패널 → 정부정책 RSS 점검으로 주소 확인)."
         return out
+
+    @app.get("/api/feed/policy/refresh")
+    def feed_policy_refresh(x_admin_token: str = "") -> dict:
+        """운영자: 정책 캐시를 비우고 즉시 새로 수집(낡은 캐시 강제 교체).
+        RSS 주소를 고친 뒤 6/28 같은 옛 데이터가 남아있을 때 사용."""
+        if not _is_admin_token(x_admin_token):
+            raise HTTPException(403, "운영자 권한이 필요합니다.")
+        prov = getattr(ctx, "policy_news", None)
+        if prov is None:
+            return {"ok": False, "error": "정책 provider 비활성"}
+        # 메모리·디스크 캐시 모두 초기화
+        _policy_cache["items"] = []
+        _policy_cache["at"] = 0.0
+        _policy_cache["ok"] = 0.0
+        try:
+            ctx.store.set_setting("feedcache:policy", "[]", ctx.clock.now().isoformat())
+        except Exception:
+            pass
+        # 즉시 재수집
+        try:
+            fetched = prov.fetch_all(ctx.clock.now())
+        except Exception as e:
+            return {"ok": False, "error": f"수집 오류: {e}"}
+        now_t = _time.time()
+        if fetched:
+            _policy_cache["items"] = fetched
+            _policy_cache["at"] = now_t
+            _policy_cache["ok"] = now_t
+            _persist_feed("policy", fetched)
+            newest = fetched[0].get("published_at", "") if fetched else ""
+            return {"ok": True, "count": len(fetched), "newest": newest,
+                    "msg": f"{len(fetched)}건 새로 수집됨(최신: {newest[:10]})"}
+        return {"ok": False, "count": 0,
+                "error": "수집 결과 0건. 운영자 패널 → 정부정책 RSS 점검으로 어느 주소가 죽었는지 확인하세요.",
+                "last_error": getattr(prov, "last_error", None)}
 
     @app.get("/api/feed/policy/diag")
     def feed_policy_diag(x_admin_token: str = "") -> dict:

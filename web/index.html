@@ -1361,7 +1361,7 @@ function evKo(k){ return EV_KO[k]||k; }
 var state = {
 horizon: "swing", scrMode: "foreign", scrMarket: "", scrData: null, data: null, sel: null, view: "evidence",
 explanation: "", explLoading: false, diag: null, diagLoading: false,
-legalDoc: null, adminOpen: false, adminToken: (function(){try{return localStorage.getItem("reco_admin_tok")||null;}catch(e){return null;}})(), adminReports: null, adminBanned: null, adminStats: null, policyDiag: null, corpDiag: null, calCov: null, adminTokChk: null,
+legalDoc: null, adminOpen: false, adminToken: (function(){try{return localStorage.getItem("reco_admin_tok")||null;}catch(e){return null;}})(), adminReports: null, adminBanned: null, adminStats: null, policyDiag: null, corpDiag: null, calCov: null, adminTokChk: null, policyRefresh: null,
 cal: null, calY: 0, calM: 0, calFilter: {}, calAdminOpen: false, calAdminList: null, mTab: "cal",
 glossaryOpen: false, glossary: null, glossQ: "", glossCat: "전체", dguideOpen: false, dguide: null,
 startOpen: false, startGuide: null, startTab: "guide",
@@ -2400,6 +2400,8 @@ admStatsHTML()+
 '<div class="adm-banned"><div class="adm-sec">정부정책 RSS 점검</div>'+
 (state.policyDiag!=null ? policyDiagHTML() :
 '<button class="adm-sbtn" data-action="policy-diag">RSS 주소 점검(어떤 부처가 실시간 되는지)</button>')+
+'<button class="adm-sbtn" data-action="policy-refresh" style="margin-top:6px">🔄 정책 강제 새로고침(낡은 캐시 비우고 즉시 수집)</button>'+
+(state.policyRefresh?'<div class="adm-tokchk">'+esc(state.policyRefresh)+'</div>':'')+
 '</div>'+
 '<div class="adm-banned"><div class="adm-sec">캘린더 일정 점검(연 1회 갱신 확인)</div>'+
 (state.calCov!=null ? calCovHTML() :
@@ -4164,6 +4166,15 @@ state.policyDiag={loading:true}; render();
 fetch(API+"/api/feed/policy/diag?x_admin_token="+encodeURIComponent(state.adminToken||""),{headers:{"x-admin-token":state.adminToken||""}})
 .then(function(r){return r.json();}).then(function(j){ state.policyDiag=j; render(); })
 .catch(function(){ state.policyDiag={alive:0,total:0,sources:[],error:"점검 실패"}; render(); });
+}
+else if(a==="policy-refresh"){
+state.policyRefresh="새로 수집 중…"; render();
+fetch(API+"/api/feed/policy/refresh?x_admin_token="+encodeURIComponent(state.adminToken||""),{headers:{"x-admin-token":state.adminToken||""}})
+.then(function(r){return r.json();}).then(function(j){
+  if(j.ok){ state.policyRefresh="✅ "+(j.msg||(j.count+"건 수집됨")); state.feedPolicy=null; if(typeof pollPolicyFeed==="function") pollPolicyFeed(); }
+  else{ state.policyRefresh="❌ "+(j.error||"수집 실패"); }
+  render();
+}).catch(function(){ state.policyRefresh="❌ 요청 실패(네트워크)"; render(); });
 }
 else if(a==="corp-diag"){
 state.corpDiag={loading:true}; render();
