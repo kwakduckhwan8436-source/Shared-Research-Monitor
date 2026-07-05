@@ -404,8 +404,9 @@ gap:3px;padding:6px 0;cursor:pointer;color:var(--muted);min-height:48px}
 .col-screener{background:var(--bg);overflow-y:auto;overflow-x:hidden;padding:14px}
 /* 리포트(위) + 공시(아래) 한 컬럼에 세로 스택 */
 .col-stack{display:flex;flex-direction:column;gap:1px;background:var(--line);min-height:0;overflow:hidden}
-.scell-top{flex:1 1 50%;min-height:0;display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
-.scell-bot{flex:1 1 50%;min-height:0;display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
+.scell-top{flex:1 1 33%;min-height:0;display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
+.scell-mid{flex:1 1 34%;min-height:0;display:flex;flex-direction:column;overflow:hidden;background:var(--bg);border-top:1px solid var(--line)}
+.scell-bot{flex:1 1 33%;min-height:0;display:flex;flex-direction:column;overflow:hidden;background:var(--bg);border-top:1px solid var(--line)}
 .grid2x2{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;
 gap:1px;background:var(--line);min-height:0;overflow:hidden}
 .gcell{min-height:0;overflow:hidden;display:flex;flex-direction:column;background:var(--bg)}
@@ -1975,8 +1976,8 @@ return '<div class="fitem"><div class="ndot '+sent+'"></div><div class="nbody">'
 head+title+'<div class="nmeta"><span class="ndate">'+esc(d)+'</span>'+tags+'</div></div></div>';
 }
 function feedPanelHTML(kind){
-var f = kind==="news"? state.feedNews : (kind==="reports"? state.feedReports : (kind==="policy"? state.feedPolicy : (kind==="hot"? state.feedHot : state.feedDisc)));
-var label = kind==="news"? "실시간 뉴스" : (kind==="reports"? "증권사 리포트동향" : (kind==="policy"? "정부정책 (정책브리핑·부처)" : (kind==="hot"? "🔥 오늘의 주요 공시" : "실시간 공시 (전체)")));
+var f = kind==="news"? state.feedNews : (kind==="reports"? state.feedReports : (kind==="policy"? state.feedPolicy : (kind==="hot"? state.feedHot : (kind==="ipo"? state.feedIpo : state.feedDisc))));
+var label = kind==="news"? "실시간 뉴스" : (kind==="reports"? "증권사 리포트동향" : (kind==="policy"? "정부정책 (정책브리핑·부처)" : (kind==="hot"? "🔥 오늘의 주요 공시" : (kind==="ipo"? "🎯 공모주(IPO) 청약일정" : "실시간 공시 (전체)"))));
 var cnt = (f&&f.items)? f.items.length : 0;
 var emptyMsg;
 if(state.mode==="sample") emptyMsg="샘플 모드 — 라이브에서 실시간 표시";
@@ -1988,10 +1989,12 @@ else if(kind==="policy" && f && f.error) emptyMsg=f.error;
 else if(kind==="policy") emptyMsg=(f&&f.note)? f.note : "정책 자료를 불러오는 중입니다.";
 else if(kind==="hot" && f && f.error) emptyMsg=f.error;
 else if(kind==="hot") emptyMsg=(f&&f.note)? f.note : "주요 공시를 불러오는 중입니다.";
+else if(kind==="ipo" && f && f.error) emptyMsg=f.error;
+else if(kind==="ipo") emptyMsg=(f&&f.note)? f.note : "공모주 정보를 불러오는 중입니다.";
 else if(kind==="disc" && f && f.error) emptyMsg=f.error;   // DART 키 미활성·한도·주말 등 원인 노출
 else emptyMsg="수집된 항목이 없습니다. 잠시 후 갱신됩니다.";
 var items = (f&&f.items&&f.items.length)
-? f.items.map(function(it){ return kind==="hot"? hotItemHTML(it) : feedItemHTML(it, kind==="reports"); }).join("")
+? f.items.map(function(it){ return kind==="hot"? hotItemHTML(it) : (kind==="ipo"? ipoItemHTML(it) : feedItemHTML(it, kind==="reports")); }).join("")
 : '<div class="note">'+emptyMsg+'</div>';
 var live = state.mode!=="sample"
 ? '<span class="livedot"></span>'+(f&&f.ts? " "+tFmt(f.ts,"hms"):"") : '';
@@ -2020,6 +2023,11 @@ if(kind==="hot"){
 var hattr = (f&&f.attribution)? f.attribution : "금융감독원 전자공시(DART) · 제목·링크만 · 투자권유 아님";
 return head+'<div class="feedbody">'+items+'</div>'+
 '<div class="policy-attr">📋 '+esc(hattr)+'</div>';
+}
+if(kind==="ipo"){
+var iattr = (f&&f.attribution)? f.attribution : "금융감독원 전자공시(DART) 증권신고(지분증권)";
+return head+'<div class="feedbody">'+items+'</div>'+
+'<div class="policy-attr">🎯 '+esc(iattr)+'</div>';
 }
 if(kind==="policy"){
 var attr = (f&&f.attribution)? f.attribution : "공공누리 — 정책브리핑(korea.kr) 및 각 부처 보도자료";
@@ -3188,7 +3196,8 @@ modeBanner()+
 '<div class="main dash4 mtab-'+(state.mTab||'cal')+'">'+
 '<div class="col-screener mpane" data-pane="cal">'+leftColHTML(items)+'</div>'+
 '<div class="col-stack mpane" data-pane="disc">'+
-'<div class="feedcol scell-top" id="feed-reports">'+feedPanelHTML("reports")+'</div>'+
+'<div class="feedcol scell-top" id="feed-ipo">'+feedPanelHTML("ipo")+'</div>'+
+'<div class="feedcol scell-mid" id="feed-reports">'+feedPanelHTML("reports")+'</div>'+
 '<div class="feedcol scell-bot" id="feed-disc">'+feedPanelHTML("disc")+'</div>'+
 '</div>'+
 '<div class="col-newsstack mpane" data-pane="news">'+
@@ -3552,7 +3561,7 @@ el.className="pill mktpill "+ms.cls;
 el.textContent=ms.label;
 }
 function patchFeed(kind){
-var id = kind==="news"?"feed-news":(kind==="reports"?"feed-reports":(kind==="policy"?"feed-policy":(kind==="hot"?"feed-hot":"feed-disc")));
+var id = kind==="news"?"feed-news":(kind==="reports"?"feed-reports":(kind==="policy"?"feed-policy":(kind==="hot"?"feed-hot":(kind==="ipo"?"feed-ipo":"feed-disc"))));
 var el=document.getElementById(id);
 if(el) el.innerHTML=feedPanelHTML(kind);
 }
@@ -3567,6 +3576,10 @@ getJSON("/api/feed/news?limit=60").then(function(j){ state.feedNews=j; patchFeed
 function pollPolicyFeed(){
 if(state.mode==="sample") return;
 getJSON("/api/feed/policy?limit=40").then(function(j){ state.feedPolicy=j; patchFeed("policy"); }).catch(function(){});
+}
+function pollIpoFeed(){
+if(state.mode==="sample") return;
+getJSON("/api/feed/ipo?limit=40").then(function(j){ state.feedIpo=j; patchFeed("ipo"); }).catch(function(){});
 }
 function pollReports(){
 if(state.mode==="sample") return;
@@ -3605,12 +3618,14 @@ if(state.mode==="sample") return;
 // 즉시 보이는 것 먼저(공시·캘린더·뉴스·채팅), 덜 급한 것은 살짝 뒤로 분산 → 첫 화면 부드럽게
 scheduleFeeds(); pollNewsFeed(); pollChat(); pollNotice();
 setTimeout(function(){ pollPolicyFeed(); }, 400);     // 정책 피드 0.4초 뒤
+setTimeout(function(){ pollIpoFeed(); }, 700);        // 공모주 피드 0.7초 뒤
 setTimeout(function(){ pollReports(); }, 700);        // 리포트 0.7초 뒤
 pollIndices(); pollRegime();                          // 공개모드면 즉시 반환(부담 적음)
 setTimeout(function(){ pollFx(); }, 500);             // 환율(안전한 공공 시세) 0.5초 뒤
 setInterval(pollFx, 1800000);                        // 환율 30분
 feedNewsTimer=setInterval(pollNewsFeed, 10000);  // 실시간 뉴스 10초(해외장 시간에도 빠르게)
 setInterval(pollPolicyFeed, 300000);             // 정부정책 5분(자동 갱신 체감 개선)
+setInterval(pollIpoFeed, 1800000);               // 공모주 30분(자주 안 바뀜)
 repTimer=setInterval(pollReports, 45000);   // 리포트 45초
 chatTimer=setInterval(pollChat, 3000);      // 채팅 3초
 noticeTimer=setInterval(function(){ pollNotice(); }, 20000); // 공지 20초(접속자는 채팅 폴링이 담당)
