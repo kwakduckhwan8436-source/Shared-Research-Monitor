@@ -3559,7 +3559,7 @@ pollIndices(); pollRegime();                          // 공개모드면 즉시 
 setTimeout(function(){ pollFx(); }, 500);             // 환율(안전한 공공 시세) 0.5초 뒤
 setInterval(pollFx, 1800000);                        // 환율 30분
 feedNewsTimer=setInterval(pollNewsFeed, 10000);  // 실시간 뉴스 10초(해외장 시간에도 빠르게)
-setInterval(pollPolicyFeed, 600000);             // 정부정책 10분(자주 안 바뀜)
+setInterval(pollPolicyFeed, 300000);             // 정부정책 5분(자동 갱신 체감 개선)
 repTimer=setInterval(pollReports, 45000);   // 리포트 45초
 chatTimer=setInterval(pollChat, 3000);      // 채팅 3초
 noticeTimer=setInterval(function(){ pollNotice(); }, 20000); // 공지 20초(접속자는 채팅 폴링이 담당)

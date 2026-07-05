@@ -17,7 +17,7 @@ from typing import Any, Optional
 
 from app.llm import explain as explain_mod
 
-BUILD_VERSION = "2026.07.05-ua1"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
+BUILD_VERSION = "2026.07.05-poll1"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
 
 
 def _rsi_series(values: list, period: int = 14) -> list:
@@ -1514,8 +1514,8 @@ def register_routes(app: Any, ctx: Any) -> None:
                     "data_source": ctx.config.data_source,
                     "note": "정부정책 피드는 라이브에서 표시됩니다(정책브리핑·부처 RSS)."}
         now_t = _time.time()
-        # 15분 캐시(부처 RSS는 자주 안 바뀜)
-        if not _policy_cache["items"] or now_t - _policy_cache["at"] > 900:
+        # 10분 캐시(클라이언트 폴링 주기와 맞춤 — 자동 갱신이 실제로 반영되도록)
+        if not _policy_cache["items"] or now_t - _policy_cache["at"] > 600:
             _policy_cache["at"] = now_t
             try:
                 fetched = prov.fetch_all(ctx.clock.now())
