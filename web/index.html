@@ -419,7 +419,8 @@ gap:1px;background:var(--line);min-height:0;overflow:hidden}
 .hot-badge.imp-mid{background:rgba(45,212,191,.13);color:var(--teal);border:1px solid rgba(45,212,191,.28)}
 .hot-badge.imp-lo{background:var(--panel3);color:var(--muted);border:1px solid var(--line2)}
 .hot-corp{font-size:12px;font-weight:600;color:var(--ink2)}
-.hot-float{display:flex;flex-direction:column;max-height:82vh;overflow:hidden;
+.hot-float{pointer-events:auto;position:fixed;left:50%;top:70px;transform:translateX(-50%);
+  display:flex;flex-direction:column;max-height:82vh;overflow:hidden;
   box-shadow:0 24px 64px rgba(0,0,0,.5);border:1px solid var(--line2);border-radius:14px}
 .hot-float.ce-min{max-height:none}
 .hot-float .modal-h{cursor:move;user-select:none;flex:none;
@@ -4109,11 +4110,16 @@ nameTimer=setTimeout(function(){ saveChatName(v.trim()||"익명"); }, 400);
 document.addEventListener("click",function(e){
 var t=e.target.closest?e.target.closest("[data-action]"):null; if(!t) return;
 var a=t.getAttribute("data-action");
-// 모달 배경 닫기(*-close)인데, 클릭 지점이 모달 내용(data-stop) 안이면 닫지 않음
-if(a && /-close$/.test(a) && e.target.closest && e.target.closest('[data-stop]')){
-  var stopEl=e.target.closest('[data-stop]');
-  // 닫기 대상(배경)이 data-stop 바깥에 있을 때만 무시(내용 클릭 보호)
-  if(stopEl && stopEl.contains(e.target) && t.contains(stopEl)){ return; }
+// 닫기(*-close) 처리: 명시적 닫기 버튼(✕ 등 실제 버튼)은 항상 통과시킨다.
+// 배경(오버레이) 클릭으로만 닫는 경우에만, 내용(data-stop) 안 클릭을 무시한다.
+if(a && /-close$/.test(a)){
+  var isButton = t.tagName==="BUTTON" || t.classList.contains("modal-x")
+                 || t.classList.contains("ce-winbtn") || t.classList.contains("win-x");
+  if(!isButton){
+    // t 자체가 배경(오버레이)인 경우: 클릭 지점이 내용 안이면 닫지 않음
+    var stopEl=e.target.closest && e.target.closest('[data-stop]');
+    if(stopEl && t.contains && t.contains(stopEl) && stopEl.contains(e.target)){ return; }
+  }
 }
 if(a==="horizon"){ state.horizon=t.getAttribute("data-h"); state.sel=null; state.modal=false; state.explanation=""; state.diag=null; state.stock=null; state.live=null; manageTimers(); render(); loadRecs(state.horizon); }
 else if(a==="scrmode"){ state.scrMode=t.getAttribute("data-m"); state.q=""; state.sel=null; state.scrData=null; render(); loadScreen(state.scrMode, ""); }
@@ -4135,7 +4141,7 @@ else if(a==="hotdisc"){
   state.hotOpen=true; state.hotMin=false; render();
   getJSON("/api/feed/hot_disclosures?limit=30").then(function(j){ state.feedHot=j; if(state.hotOpen) render(); }).catch(function(){ if(!state.feedHot){ state.feedHot={error:"불러오기 실패"}; } if(state.hotOpen) render(); });
 }
-else if(a==="hot-close"){ if(t.getAttribute("data-stop"))return; state.hotOpen=false; render(); }
+else if(a==="hot-close"){ state.hotOpen=false; render(); }
 else if(a==="hot-min"){ state.hotMin=!state.hotMin; render(); }
 else if(a==="calc"){ state.calcOpen=true; state.calcMin=false; state.calcTab=state.calcTab||"yield"; render(); }
 else if(a==="calc-close"){ if(t.getAttribute("data-stop"))return; state.calcOpen=false; render(); }

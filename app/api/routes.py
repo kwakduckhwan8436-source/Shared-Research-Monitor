@@ -17,7 +17,7 @@ from typing import Any, Optional
 
 from app.llm import explain as explain_mod
 
-BUILD_VERSION = "2026.06.30-diag1"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
+BUILD_VERSION = "2026.06.30-fix12"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
 
 
 def _rsi_series(values: list, period: int = 14) -> list:
@@ -1532,20 +1532,24 @@ def register_routes(app: Any, ctx: Any) -> None:
         if not items:
             cached, ts = _load_feed_cache("policy")
             if cached:
-                items = cached[:limit]; degraded = True; cached_at = ts
+                # 디스크 캐시라도 데이터가 있으면 정상 표시(지연 딱지 X). 시간만 참고로.
+                items = cached[:limit]; cached_at = ts
+                _policy_cache["items"] = cached
+                if not _policy_cache.get("ok"):
+                    _policy_cache["ok"] = now_t
         out = {"items": items, "ts": ctx.clock.now().isoformat(),
                "data_source": ctx.config.data_source,
                "attribution": "공공누리 — 정책브리핑(korea.kr) 및 각 부처 보도자료"}
         ok_at = _policy_cache.get("ok", 0.0)
-        # 지연 기준을 3시간으로 완화(부처 RSS는 원래 갱신이 느려 잦은 경고는 오해를 부름)
-        if items and ok_at and (now_t - ok_at) > 10800:
+        # 지연 표시는 '데이터가 아주 오래(6시간)됐을 때'만. 부처 RSS는 원래 갱신이 느림.
+        if items and ok_at and (now_t - ok_at) > 21600:
             degraded = True; out["stale_sec"] = int(now_t - ok_at)
         if degraded:
             out["degraded"] = True
-            if cached_at:
-                out["cached_at"] = cached_at
+        if cached_at:
+            out["cached_at"] = cached_at
         if not items:
-            out["error"] = "정책 자료를 불러오지 못했습니다(네트워크/RSS 점검). 잠시 후 갱신됩니다."
+            out["error"] = "정책 자료를 불러오지 못했습니다(운영자 패널 → 정부정책 RSS 점검으로 주소 확인)."
         return out
 
     @app.get("/api/feed/policy/diag")
