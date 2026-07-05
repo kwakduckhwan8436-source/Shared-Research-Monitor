@@ -17,7 +17,7 @@ from typing import Any, Optional
 
 from app.llm import explain as explain_mod
 
-BUILD_VERSION = "2026.06.29-corp9"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
+BUILD_VERSION = "2026.06.30-hot1"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
 
 
 def _rsi_series(values: list, period: int = 14) -> list:
@@ -1441,6 +1441,45 @@ def register_routes(app: Any, ctx: Any) -> None:
 
     # 정부정책 캐시(메모리) — 정책 RSS는 자주 안 바뀌므로 10분 캐시
     _policy_cache = {"items": [], "at": 0.0, "ok": 0.0}
+
+    @app.get("/api/feed/hot_disclosures")
+    def feed_hot_disclosures(limit: int = 20) -> dict:
+        """오늘의 주요 공시 — 전체 공시 중 이벤트성(유상증자·M&A·자사주·배당·실적 등)만
+        골라 유형 라벨과 함께 제공. DART 공식 데이터, 제목+링크만(본문 미복제). 추천 아님."""
+        from app.providers.dart import classify_disclosure
+        # 기존 시장 공시 캐시 재사용(_feed['mkt_disc'])
+        raw = []
+        try:
+            raw = _dedupe(_feed.get("mkt_disc") or [])
+        except Exception:
+            raw = (_feed.get("mkt_disc") or [])
+        hot = []
+        for it in raw:
+            cls = classify_disclosure(it.get("title", ""))
+            if not cls:
+                continue
+            hot.append({
+                "title": it.get("title", ""),
+                "corp": it.get("corp", ""),
+                "symbol": it.get("symbol", ""),
+                "market": it.get("market", ""),
+                "url": it.get("url", ""),
+                "published_at": it.get("published_at", ""),
+                "event_type": cls["type"],
+                "icon": cls["icon"],
+                "importance": cls["importance"],
+            })
+        # 중요도 높은 순 → 최신 순
+        hot.sort(key=lambda x: (x["importance"], x.get("published_at", "")), reverse=True)
+        err = _feed.get("mkt_disc_err")
+        out = {"items": hot[:limit], "ts": ctx.clock.now().isoformat(),
+               "count": len(hot),
+               "attribution": "금융감독원 전자공시(DART) · 제목·링크만 · 투자권유 아님"}
+        if not hot and err:
+            out["error"] = "공시를 불러오지 못했습니다: " + str(err)
+        elif not hot:
+            out["note"] = "현재 표시할 주요 공시가 없습니다(장 시간외/휴장일 가능)."
+        return out
 
     @app.get("/api/feed/policy")
     def feed_policy(limit: int = 30) -> dict:
