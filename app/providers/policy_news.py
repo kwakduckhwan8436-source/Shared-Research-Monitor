@@ -136,7 +136,14 @@ class PolicyNewsProvider:
     def _fetch_text(self, url: str) -> Optional[str]:
         if self.transport is not None:
             return self.transport(url)
-        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (stock_reco)"})
+        req = urllib.request.Request(url, headers={
+            "User-Agent": ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                           "AppleWebKit/537.36 (KHTML, like Gecko) "
+                           "Chrome/126.0.0.0 Safari/537.36"),
+            "Accept": "application/rss+xml, application/xml, text/xml, */*",
+            "Accept-Language": "ko-KR,ko;q=0.9",
+            "Referer": "https://www.korea.kr/etc/rss.do",
+        })
         try:
             with urllib.request.urlopen(req, timeout=self.timeout) as resp:
                 if resp.status != 200:

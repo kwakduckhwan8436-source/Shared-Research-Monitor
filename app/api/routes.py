@@ -17,7 +17,7 @@ from typing import Any, Optional
 
 from app.llm import explain as explain_mod
 
-BUILD_VERSION = "2026.07.05-probe2"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
+BUILD_VERSION = "2026.07.05-ua1"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
 
 
 def _rsi_series(values: list, period: int = 14) -> list:
@@ -1568,7 +1568,14 @@ def register_routes(app: Any, ctx: Any) -> None:
             row = {"name": src["name"], "url": src["url"],
                    "http": None, "bytes": 0, "count": 0, "newest": "", "error": ""}
             try:
-                req = _u.Request(src["url"], headers={"User-Agent": "Mozilla/5.0 (stock_reco probe)"})
+                req = _u.Request(src["url"], headers={
+                    "User-Agent": ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                                   "AppleWebKit/537.36 (KHTML, like Gecko) "
+                                   "Chrome/126.0.0.0 Safari/537.36"),
+                    "Accept": "application/rss+xml, application/xml, text/xml, */*",
+                    "Accept-Language": "ko-KR,ko;q=0.9",
+                    "Referer": "https://www.korea.kr/etc/rss.do",
+                })
                 with _u.urlopen(req, timeout=8.0) as resp:
                     row["http"] = getattr(resp, "status", 200)
                     raw = resp.read()
