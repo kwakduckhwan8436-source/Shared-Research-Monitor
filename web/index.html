@@ -1309,6 +1309,7 @@ a.ntitle:hover{color:var(--blue);text-decoration:underline}
 .ntag{font-size:10.5px;font-weight:500;padding:2px 8px;border-radius:4px}
 .ntag.risk{background:var(--red-d);color:#f3a59f}
 .ntag.ev{background:var(--blue-d);color:#a9cdf8}
+.ntag.biz{background:rgba(45,212,191,.14);color:var(--teal);border:1px solid rgba(45,212,191,.25)}
 .ntag.src-disc{background:var(--panel3);color:var(--ink2)}
 .ntag.src-news{background:var(--teal-d);color:#9fded0}
 .dgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
@@ -1948,6 +1949,7 @@ var tags = isReport
 ? '<span class="ntag src-news">리포트동향</span>'
 : [].concat(
 (it.risk_flags||[]).map(function(t){return '<span class="ntag risk">'+esc(t)+'</span>';}),
+(it.biz_tags||[]).map(function(t){return '<span class="ntag biz">'+esc(t)+'</span>';}),
 (it.events||[]).map(function(t){return '<span class="ntag ev">'+esc(t)+'</span>';})).join("");
 var d=tFmt(it.published_at,"md_hm");
 var title = it.link

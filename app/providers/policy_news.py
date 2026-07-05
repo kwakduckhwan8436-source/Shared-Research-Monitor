@@ -26,35 +26,73 @@ KST = timezone(timedelta(hours=9))
 # 기준이라 출처만 밝히면 상업적 이용도 가능. 실제 주소는 기관 사정에 따라
 # 달라질 수 있어 운영자가 검증/갱신 권장(누리집 'RSS' 메뉴에서 확인).
 SOURCES = [
+    # 종합(정책포털) — korea.kr 공식 확인(2026)
     {"name": "정책브리핑", "url": "https://www.korea.kr/rss/policy.xml",
      "attribution": "출처: 정책브리핑(korea.kr), 공공누리"},
-    {"name": "기획재정부", "url": "https://www.korea.kr/rss/dept_moef.xml",
-     "attribution": "출처: 기획재정부, 공공누리"},
+    {"name": "보도자료", "url": "https://www.korea.kr/rss/pressrelease.xml",
+     "attribution": "출처: 정책브리핑 보도자료(korea.kr), 공공누리"},
+    {"name": "부처브리핑", "url": "https://www.korea.kr/rss/ebriefing.xml",
+     "attribution": "출처: 정책브리핑 부처브리핑(korea.kr), 공공누리"},
+    # 증시·경제 직결 부처/위원회 — 공식 확인된 현재 주소
+    {"name": "재정경제부", "url": "https://www.korea.kr/rss/dept_moef.xml",
+     "attribution": "출처: 재정경제부, 공공누리"},
     {"name": "금융위원회", "url": "https://www.korea.kr/rss/dept_fsc.xml",
      "attribution": "출처: 금융위원회, 공공누리"},
-    {"name": "산업통상자원부", "url": "https://www.korea.kr/rss/dept_motie.xml",
-     "attribution": "출처: 산업통상자원부, 공공누리"},
+    {"name": "산업통상부", "url": "https://www.korea.kr/rss/dept_motir.xml",
+     "attribution": "출처: 산업통상부, 공공누리"},   # ← 옛 dept_motie.xml 에서 변경됨
     {"name": "중소벤처기업부", "url": "https://www.korea.kr/rss/dept_mss.xml",
      "attribution": "출처: 중소벤처기업부, 공공누리"},
+    {"name": "공정거래위원회", "url": "https://www.korea.kr/rss/dept_ftc.xml",
+     "attribution": "출처: 공정거래위원회, 공공누리"},
     {"name": "국토교통부", "url": "https://www.korea.kr/rss/dept_molit.xml",
      "attribution": "출처: 국토교통부, 공공누리"},
     {"name": "과학기술정보통신부", "url": "https://www.korea.kr/rss/dept_msit.xml",
      "attribution": "출처: 과학기술정보통신부, 공공누리"},
     {"name": "고용노동부", "url": "https://www.korea.kr/rss/dept_moel.xml",
      "attribution": "출처: 고용노동부, 공공누리"},
-    {"name": "공정거래위원회", "url": "https://www.korea.kr/rss/dept_ftc.xml",
-     "attribution": "출처: 공정거래위원회, 공공누리"},
-    {"name": "농림축산식품부", "url": "https://www.korea.kr/rss/dept_mafra.xml",
-     "attribution": "출처: 농림축산식품부, 공공누리"},
+    {"name": "기획예산처", "url": "https://www.korea.kr/rss/dept_mpb.xml",
+     "attribution": "출처: 기획예산처, 공공누리"},
+    {"name": "국세청", "url": "https://www.korea.kr/rss/dept_nts.xml",
+     "attribution": "출처: 국세청, 공공누리"},
+    {"name": "관세청", "url": "https://www.korea.kr/rss/dept_customs.xml",
+     "attribution": "출처: 관세청, 공공누리"},
+    {"name": "국가데이터처", "url": "https://www.korea.kr/rss/dept_mods.xml",
+     "attribution": "출처: 국가데이터처(옛 통계청 기능), 공공누리"},
 ]
 
-# 금융·증시와 직접 관련도가 높은 핵심 부처(기본 활성). 나머지는 운영자가 켤 수 있음.
-CORE_SOURCE_NAMES = {"정책브리핑", "기획재정부", "금융위원회",
-                     "산업통상자원부", "중소벤처기업부", "공정거래위원회"}
+# 증시·경제와 직접 관련도가 높은 핵심 소스(기본 활성). 나머지는 운영자가 켤 수 있음.
+CORE_SOURCE_NAMES = {"정책브리핑", "보도자료", "부처브리핑", "재정경제부", "금융위원회",
+                     "산업통상부", "중소벤처기업부", "공정거래위원회", "기획예산처",
+                     "국세청", "관세청", "국가데이터처"}
 
 
 def _strip_tags(s: str) -> str:
     return re.sub(r"<[^>]+>", "", s or "").strip()
+
+
+# 증시·투자와 관련도 높은 키워드 → 태그(제목에 있으면 투자자에게 강조)
+_BIZ_KEYWORDS = [
+    ("금리", "금리"), ("기준금리", "금리"), ("환율", "환율"), ("수출", "수출입"),
+    ("수입", "수출입"), ("무역", "수출입"), ("반도체", "반도체"), ("배터리", "2차전지"),
+    ("2차전지", "2차전지"), ("전기차", "전기차"), ("바이오", "바이오"), ("제약", "바이오"),
+    ("부동산", "부동산"), ("주택", "부동산"), ("증시", "증시"), ("주식", "증시"),
+    ("코스피", "증시"), ("코스닥", "증시"), ("상장", "증시"), ("공모", "증시"),
+    ("규제", "규제"), ("완화", "규제"), ("지원", "정책지원"), ("보조금", "정책지원"),
+    ("세제", "세제"), ("세금", "세제"), ("감세", "세제"), ("예산", "예산"),
+    ("추경", "예산"), ("투자", "투자"), ("펀드", "투자"), ("연금", "연금"),
+    ("AI", "AI"), ("인공지능", "AI"), ("방산", "방산"), ("원전", "원전"),
+    ("조선", "조선"), ("철강", "철강"), ("석유", "에너지"), ("가스", "에너지"),
+    ("에너지", "에너지"), ("물가", "물가"), ("인플레", "물가"),
+]
+
+
+def _biz_tags(title: str) -> list[str]:
+    t = (title or "")
+    tags: list[str] = []
+    for kw, tag in _BIZ_KEYWORDS:
+        if kw in t and tag not in tags:
+            tags.append(tag)
+    return tags[:3]   # 최대 3개
 
 
 def _parse_date(s: str) -> Optional[datetime]:
@@ -130,20 +168,28 @@ class PolicyNewsProvider:
                 "source": "정책",                      # 피드 종류 태그
                 "publisher": source["name"],          # 기관명
                 "attribution": source["attribution"], # 공공누리 출처표기
+                "biz_tags": _biz_tags(title),         # 증시 관련 키워드(투자자 참고)
             })
             if len(out) >= self.max_items:
                 break
         return out
 
     def fetch_all(self, now: datetime) -> list[dict]:
-        """모든 소스에서 수집해 합치고 최신순 정렬."""
+        """모든 소스에서 수집해 합치고 최신순 정렬. 중복(제목) 제거."""
         items: list[dict] = []
+        seen: set[str] = set()
         for src in self.sources:
             text = self._fetch_text(src["url"])
             if not text:
                 continue
             try:
-                items.extend(self.parse_rss(text, src, now))
+                for it in self.parse_rss(text, src, now):
+                    key = (it.get("title") or "").strip()
+                    if key and key in seen:
+                        continue
+                    if key:
+                        seen.add(key)
+                    items.append(it)
             except Exception:
                 continue
         items.sort(key=lambda x: x.get("published_at", ""), reverse=True)
