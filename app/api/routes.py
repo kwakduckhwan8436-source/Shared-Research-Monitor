@@ -17,7 +17,7 @@ from typing import Any, Optional
 
 from app.llm import explain as explain_mod
 
-BUILD_VERSION = "2026.06.30-rss3"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
+BUILD_VERSION = "2026.06.30-time2"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
 
 
 def _rsi_series(values: list, period: int = 14) -> list:
@@ -1487,6 +1487,7 @@ def register_routes(app: Any, ctx: Any) -> None:
                 "market": it.get("market", ""),
                 "url": it.get("url", ""),
                 "published_at": it.get("published_at", ""),
+                "date_only": it.get("date_only", True),   # DART 공시는 날짜만
                 "event_type": cls["type"],
                 "icon": cls["icon"],
                 "importance": cls["importance"],

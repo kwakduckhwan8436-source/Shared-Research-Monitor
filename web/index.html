@@ -1400,6 +1400,13 @@ var hm=p(d.getHours())+":"+p(d.getMinutes());
 var md=p(d.getMonth()+1)+"-"+p(d.getDate());
 if(mode==="hm") return hm;
 if(mode==="md_hm") return md+" "+hm;
+if(mode==="md_smart"){ // 시각이 00:00이면(공시처럼 시간정보 없음) 날짜만
+  return (d.getHours()===0 && d.getMinutes()===0) ? md : (md+" "+hm);
+}
+if(mode==="date_md"){ // 날짜만(공시 — 원본 문자열에서 직접, 타임존 변환 영향 최소화)
+  var m=String(iso).match(/(\d{4})-(\d{2})-(\d{2})/);
+  return m? (m[2]+"-"+m[3]) : md;
+}
 if(mode==="date") return d.getFullYear()+"-"+md;
 return hm+":"+p(d.getSeconds());   // 기본 hms
 }
@@ -1931,7 +1938,7 @@ function hotItemHTML(it){
 var imp = it.importance||1;
 var impCls = imp>=3?"imp-hi":(imp>=2?"imp-mid":"imp-lo");
 var badge = '<span class="hot-badge '+impCls+'">'+esc(it.icon||"")+' '+esc(it.event_type||"")+'</span>';
-var d = tFmt(it.published_at,"md_hm");
+var d = tFmt(it.published_at, it.date_only?"date_md":"md_smart");
 var corp = it.symbol
 ? '<span class="fstock" data-action="pick" data-symbol="'+esc(it.symbol)+'" style="cursor:pointer">'+esc(it.corp||it.symbol)+(it.market?'<span class="fmkt">'+esc(it.market)+'</span>':'')+'</span>'
 : '<span class="hot-corp">'+esc(it.corp||"")+'</span>';
@@ -1951,7 +1958,7 @@ var tags = isReport
 (it.risk_flags||[]).map(function(t){return '<span class="ntag risk">'+esc(t)+'</span>';}),
 (it.biz_tags||[]).map(function(t){return '<span class="ntag biz">'+esc(t)+'</span>';}),
 (it.events||[]).map(function(t){return '<span class="ntag ev">'+esc(t)+'</span>';})).join("");
-var d=tFmt(it.published_at,"md_hm");
+var d=tFmt(it.published_at, it.date_only?"date_md":"md_smart");
 var title = it.link
 ? '<a class="ntitle" href="'+esc(it.link)+'" target="_blank" rel="noopener">'+esc(it.title)+'</a>'
 : '<div class="ntitle">'+esc(it.title)+'</div>';
