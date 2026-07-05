@@ -17,7 +17,7 @@ from typing import Any, Optional
 
 from app.llm import explain as explain_mod
 
-BUILD_VERSION = "2026.06.30-time2"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
+BUILD_VERSION = "2026.07.05-probe2"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
 
 
 def _rsi_series(values: list, period: int = 14) -> list:
@@ -1552,6 +1552,46 @@ def register_routes(app: Any, ctx: Any) -> None:
         if not items:
             out["error"] = "정책 자료를 불러오지 못했습니다(운영자 패널 → 정부정책 RSS 점검으로 주소 확인)."
         return out
+
+    @app.get("/api/feed/policy/probe")
+    def feed_policy_probe(x_admin_token: str = "") -> dict:
+        """정책 RSS 정밀 진단 — 각 주소를 직접 호출해 HTTP응답·건수·최신날짜·에러를 표로.
+        '6/28에 멈춤' 같은 문제가 배포/주소/네트워크 중 무엇인지 가리는 용도.
+        진단 정보(RSS는 공개주소)라 토큰 없이도 열람 가능."""
+        import urllib.request as _u
+        prov = getattr(ctx, "policy_news", None)
+        if prov is None:
+            return {"ok": False, "error": "정책 provider 비활성(RECO_POLICY_NEWS=1 필요)"}
+        now = ctx.clock.now()
+        rows = []
+        for src in prov.sources:
+            row = {"name": src["name"], "url": src["url"],
+                   "http": None, "bytes": 0, "count": 0, "newest": "", "error": ""}
+            try:
+                req = _u.Request(src["url"], headers={"User-Agent": "Mozilla/5.0 (stock_reco probe)"})
+                with _u.urlopen(req, timeout=8.0) as resp:
+                    row["http"] = getattr(resp, "status", 200)
+                    raw = resp.read()
+                    row["bytes"] = len(raw)
+                    text = raw.decode("utf-8", "replace")
+                try:
+                    parsed = prov.parse_rss(text, src, now)
+                    row["count"] = len(parsed)
+                    if parsed:
+                        row["newest"] = (parsed[0].get("published_at", "") or "")[:10]
+                except Exception as pe:
+                    row["error"] = f"파싱오류: {pe}"
+            except Exception as e:
+                row["error"] = f"{type(e).__name__}: {e}"
+            rows.append(row)
+        alive = sum(1 for r in rows if r["count"] > 0)
+        newest_all = max((r["newest"] for r in rows if r["newest"]), default="")
+        return {"ok": True, "build": BUILD_VERSION, "server_date": now.isoformat()[:10],
+                "alive": alive, "total": len(rows), "newest_overall": newest_all,
+                "sources": rows,
+                "verdict": ("정상 — 최신 자료 있음" if newest_all >= now.isoformat()[:10]
+                            else ("주소는 살아있으나 최신자료가 오래됨(주말·휴일 가능)" if alive
+                                  else "모든 주소 실패 — 네트워크 차단 또는 주소 오류"))}
 
     @app.get("/api/feed/policy/refresh")
     def feed_policy_refresh(x_admin_token: str = "") -> dict:
