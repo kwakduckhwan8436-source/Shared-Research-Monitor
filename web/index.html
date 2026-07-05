@@ -419,6 +419,12 @@ gap:1px;background:var(--line);min-height:0;overflow:hidden}
 .hot-badge.imp-mid{background:rgba(45,212,191,.13);color:var(--teal);border:1px solid rgba(45,212,191,.28)}
 .hot-badge.imp-lo{background:var(--panel3);color:var(--muted);border:1px solid var(--line2)}
 .hot-corp{font-size:12px;font-weight:600;color:var(--ink2)}
+.hot-float{display:flex;flex-direction:column;max-height:82vh;overflow:hidden;
+  box-shadow:0 24px 64px rgba(0,0,0,.5);border:1px solid var(--line2);border-radius:14px}
+.hot-float.ce-min{max-height:none}
+.hot-float .modal-h{cursor:move;user-select:none;flex:none;
+  background:linear-gradient(135deg,rgba(231,111,111,.12),rgba(231,111,111,.02));border-bottom:1px solid var(--line)}
+.hot-body{flex:1;min-height:0;overflow-y:auto;padding:4px 0}
 /* 채팅 패널 */
 .chatbar{display:flex;gap:6px;padding:10px 12px;border-top:1px solid var(--line);
 background:linear-gradient(180deg,var(--panel2),var(--panel))}
@@ -2121,14 +2127,14 @@ var mini=state.hotMin?' ce-min':'';
 var pos=state.hotPos;
 var style='max-width:560px;width:560px;'+
   (pos?('position:fixed;left:'+pos.x+'px;top:'+pos.y+'px;margin:0;transform:none;'):'');
-return '<div class="floatwrap'+mini+'"><div class="modal float-win'+mini+'" data-stop="1" data-poskey="hotPos" style="'+style+'">'+
+return '<div class="floatwrap'+mini+'"><div class="modal hot-float float-win'+mini+'" data-stop="1" data-poskey="hotPos" style="'+style+'">'+
   '<div class="modal-h float-drag"><b>🔥 오늘의 주요 공시</b>'+
     '<span class="ce-winbtns">'+
       '<button class="ce-winbtn" data-action="hot-min" title="'+(state.hotMin?'확장':'축소')+'">'+(state.hotMin?'⊡':'⊟')+'</button>'+
       '<button class="ce-winbtn" data-action="hot-close" title="닫기">✕</button>'+
     '</span></div>'+
   (state.hotMin?'':(
-    '<div class="feedbody" style="max-height:60vh;overflow-y:auto">'+body+'</div>'
+    '<div class="feedbody hot-body">'+body+'</div>'
   ))+
   '</div></div>';
 }

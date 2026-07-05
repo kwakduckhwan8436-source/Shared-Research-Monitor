@@ -17,7 +17,7 @@ from typing import Any, Optional
 
 from app.llm import explain as explain_mod
 
-BUILD_VERSION = "2026.06.30-hot2"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
+BUILD_VERSION = "2026.06.30-diag1"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
 
 
 def _rsi_series(values: list, period: int = 14) -> list:
@@ -172,6 +172,28 @@ def register_routes(app: Any, ctx: Any) -> None:
         if not tok:
             return False
         return (token or "").strip() == tok
+
+    @app.get("/api/feed/status")
+    def feed_status() -> dict:
+        """피드 진단 — 각 피드에 데이터가 있는지/마지막 오류가 뭔지 노출.
+        '전반적으로 안 살아난다' 할 때 원인(잠자기/키/RSS)을 파악하는 용도."""
+        import time as _t
+        now_t = _t.time()
+        disc_n = len(_feed.get("mkt_disc") or [])
+        disc_err = _feed.get("mkt_disc_err")
+        disc_ok = _feed.get("mkt_disc_ok", 0.0)
+        pol_n = len(_policy_cache.get("items") or [])
+        pol_ok = _policy_cache.get("ok", 0.0)
+        return {
+            "disclosures": {"count": disc_n, "error": disc_err,
+                            "age_sec": int(now_t - disc_ok) if disc_ok else None},
+            "policy": {"count": pol_n,
+                       "age_sec": int(now_t - pol_ok) if pol_ok else None},
+            "dart_key_set": bool(getattr(ctx.config, "dart_api_key", "")),
+            "naver_key_set": bool(getattr(ctx.config, "naver_client_id", "")),
+            "note": ("데이터가 0이고 방금 접속했다면 무료플랜 잠자기에서 깨어나는 중입니다"
+                     "(30초~1분 후 새로고침). 계속 0이면 키/RSS 점검이 필요합니다."),
+        }
 
     @app.get("/api/health")
     def health() -> dict:
@@ -1491,8 +1513,8 @@ def register_routes(app: Any, ctx: Any) -> None:
                     "data_source": ctx.config.data_source,
                     "note": "정부정책 피드는 라이브에서 표시됩니다(정책브리핑·부처 RSS)."}
         now_t = _time.time()
-        # 10분 캐시
-        if not _policy_cache["items"] or now_t - _policy_cache["at"] > 600:
+        # 15분 캐시(부처 RSS는 자주 안 바뀜)
+        if not _policy_cache["items"] or now_t - _policy_cache["at"] > 900:
             _policy_cache["at"] = now_t
             try:
                 fetched = prov.fetch_all(ctx.clock.now())
@@ -1500,6 +1522,9 @@ def register_routes(app: Any, ctx: Any) -> None:
                     _policy_cache["items"] = fetched
                     _policy_cache["ok"] = now_t
                     _persist_feed("policy", fetched)
+                elif _policy_cache["items"]:
+                    # 이번엔 못 받았지만 이전 데이터가 있으면 그대로 유지(지연 표시 안 함)
+                    _policy_cache["ok"] = _policy_cache.get("ok", now_t)
             except Exception:
                 pass
         items = _policy_cache["items"][:limit]
@@ -1512,7 +1537,8 @@ def register_routes(app: Any, ctx: Any) -> None:
                "data_source": ctx.config.data_source,
                "attribution": "공공누리 — 정책브리핑(korea.kr) 및 각 부처 보도자료"}
         ok_at = _policy_cache.get("ok", 0.0)
-        if items and ok_at and (now_t - ok_at) > 1800:
+        # 지연 기준을 3시간으로 완화(부처 RSS는 원래 갱신이 느려 잦은 경고는 오해를 부름)
+        if items and ok_at and (now_t - ok_at) > 10800:
             degraded = True; out["stale_sec"] = int(now_t - ok_at)
         if degraded:
             out["degraded"] = True
