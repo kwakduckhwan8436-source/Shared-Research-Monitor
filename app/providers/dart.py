@@ -196,6 +196,7 @@ class DARTProvider(DataProvider):
                     "rm": it.get("rm", ""),
                     "rcept_no": rcept,
                     "published_at": iso,
+                    "date_only": True,   # DART는 접수'일'만 제공(시각 없음) → 날짜만 표시
                     "url": f"https://dart.fss.or.kr/dsaf001/main.do?rcpNo={rcept}",
                     "source": "공시",
                 })
@@ -209,6 +210,68 @@ class DARTProvider(DataProvider):
         items.sort(key=lambda x: x["rcept_no"], reverse=True)
         return items
 
+    def recent_ipos(self, now: datetime, *, days: int = 30,
+                    page_count: int = 100, max_pages: int = 3) -> list[dict]:
+        """최근 공모주(IPO) 관련 공시 — 증권신고(지분증권) 위주.
+        DART list.json 에 pblntf_detail_ty=C001(증권신고 지분증권) 필터.
+        청약·상장 세부일정은 신고서 본문에 있어 여기선 제목·회사·링크만 제공."""
+        self.last_disclosure_error = None
+        if not self.api_key:
+            self.last_disclosure_error = "DART 키가 설정되지 않았습니다."
+            return []
+        end = now.astimezone(KST).date()
+        start = end - timedelta(days=max(0, days - 1))
+        seen: set[str] = set()
+        items: list[dict] = []
+        for page in range(1, max_pages + 1):
+            try:
+                body = self._get("/list.json", {
+                    "bgn_de": start.strftime("%Y%m%d"), "end_de": end.strftime("%Y%m%d"),
+                    "pblntf_detail_ty": "C001",   # 증권신고(지분증권)
+                    "page_no": str(page), "page_count": str(page_count),
+                })
+            except ProviderError as e:
+                msg = str(e)
+                if "status=013" in msg:   # 데이터 없음
+                    break
+                self.last_disclosure_error = msg
+                break
+            for it in (body.get("list") or []):
+                rcept = it.get("rcept_no", "")
+                if not rcept or rcept in seen:
+                    continue
+                seen.add(rcept)
+                nm = it.get("report_nm", "")
+                dt = it.get("rcept_dt", "")
+                iso = (f"{dt[:4]}-{dt[4:6]}-{dt[6:8]}T00:00:00+09:00"
+                       if len(dt) == 8 else "")
+                # IPO 성격 분류(신규상장/유상증자/정정 등)
+                if "정정" in nm:
+                    tag = "정정"
+                elif "철회" in nm:
+                    tag = "철회"
+                else:
+                    tag = "신규"
+                items.append({
+                    "corp": it.get("corp_name", ""),
+                    "symbol": it.get("stock_code", "") or "",
+                    "market": it.get("corp_cls", ""),
+                    "title": nm,
+                    "tag": tag,
+                    "rcept_no": rcept,
+                    "published_at": iso,
+                    "date_only": True,
+                    "url": f"https://dart.fss.or.kr/dsaf001/main.do?rcpNo={rcept}",
+                    "source": "IPO",
+                })
+            try:
+                total_page = int(body.get("total_page", 1))
+            except (TypeError, ValueError):
+                total_page = 1
+            if page >= total_page:
+                break
+        items.sort(key=lambda x: x["rcept_no"], reverse=True)
+        return items
 
     def _latest_annual(self, corp_code: str, now: datetime) -> tuple[str, datetime]:
         """가장 최근 '사업보고서'의 (사업연도, 접수일 as_of). 접수일 <= now 만."""

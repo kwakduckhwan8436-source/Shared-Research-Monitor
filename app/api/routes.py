@@ -17,7 +17,7 @@ from typing import Any, Optional
 
 from app.llm import explain as explain_mod
 
-BUILD_VERSION = "2026.07.05-cal2"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
+BUILD_VERSION = "2026.07.05-ipo1"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
 
 
 def _rsi_series(values: list, period: int = 14) -> list:
@@ -1502,6 +1502,39 @@ def register_routes(app: Any, ctx: Any) -> None:
             out["error"] = "공시를 불러오지 못했습니다: " + str(err)
         elif not hot:
             out["note"] = "현재 표시할 주요 공시가 없습니다(장 시간외/휴장일 가능)."
+        return out
+
+    _ipo_cache = {"items": [], "at": 0.0, "err": None}
+
+    @app.get("/api/feed/ipo")
+    def feed_ipo(limit: int = 30) -> dict:
+        """공모주(IPO) 일정 — DART 증권신고(지분증권) 공시. 제목·회사·링크만.
+        청약 세부일정은 DART 원문에서 확인. 투자권유 아님."""
+        prov = getattr(ctx, "dart", None)
+        if prov is None or not getattr(prov, "api_key", ""):
+            return {"items": [], "ts": ctx.clock.now().isoformat(),
+                    "error": "DART 키가 없어 공모주 정보를 불러올 수 없습니다."}
+        now_t = _time.time()
+        # 30분 캐시(공모 공시는 자주 안 바뀜)
+        if not _ipo_cache["items"] or now_t - _ipo_cache["at"] > 1800:
+            _ipo_cache["at"] = now_t
+            try:
+                fetched = prov.recent_ipos(ctx.clock.now(), days=30)
+                if fetched:
+                    _ipo_cache["items"] = fetched
+                    _ipo_cache["err"] = None
+                else:
+                    _ipo_cache["err"] = getattr(prov, "last_disclosure_error", None)
+            except Exception as e:
+                _ipo_cache["err"] = str(e)
+        items = _ipo_cache["items"][:limit]
+        out = {"items": items, "ts": ctx.clock.now().isoformat(),
+               "count": len(_ipo_cache["items"]),
+               "attribution": "금융감독원 전자공시(DART) 증권신고(지분증권) · 청약일정은 원문 확인 · 투자권유 아님"}
+        if not items and _ipo_cache["err"]:
+            out["error"] = "공모주 정보를 불러오지 못했습니다: " + str(_ipo_cache["err"])
+        elif not items:
+            out["note"] = "최근 30일 내 신규 공모(증권신고) 공시가 없습니다."
         return out
 
     @app.get("/api/feed/policy")

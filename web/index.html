@@ -1369,7 +1369,7 @@ cal: null, calY: 0, calM: 0, calFilter: {}, calAdminOpen: false, calAdminList: n
 glossaryOpen: false, glossary: null, glossQ: "", glossCat: "전체", dguideOpen: false, dguide: null,
 startOpen: false, startGuide: null, startTab: "guide",
 stock: null, stockLoading: false, live: null, newsTs: "",
-feedDisc: null, feedNews: null, feedReports: null, feedPolicy: null, feedHot: null, policyFilter: "all", hotOpen: false, hotMin: false, hotPos: null, modal: false, reports: null, reportsLoading: false,
+feedDisc: null, feedNews: null, feedReports: null, feedPolicy: null, feedHot: null, feedIpo: null, ipoOpen: false, ipoMin: false, ipoPos: null, policyFilter: "all", hotOpen: false, hotMin: false, hotPos: null, modal: false, reports: null, reportsLoading: false,
 chat: [], chatLastId: 0, chatUser: "익명", reacts: {}, indices: null, fx: null, corpOpen: false, corpTab: "dividend", corpData: null, corpMin: false, corpPos: null, corpQuery: "", calcOpen: false, calcTab: "yield", calcVals: {}, calcMin: false, calcPos: null, calcW: 520, recsCache: {},
 notice: "", emojiOpen: false, briefing: null, briefingOpen: false, presence: {site:0,chat:0},
 mflowOpen: false, mflow: null, mflowMkt: "KOSPI",
@@ -1455,6 +1455,7 @@ return '<div class="top">'+
 '<button class="btn" data-action="glossary">📖 용어사전</button>'+
 '<button class="btn" data-action="dguide">📑 공시읽기</button>'+
 '<button class="btn" data-action="hotdisc">🔥 주요공시</button>'+
+'<button class="btn" data-action="ipo">🎯 공모주</button>'+
 '<button class="btn" data-action="calc">🧮 투자계산기</button>'+
 '<button class="btn" data-action="startguide">🚀 주식입문</button>'+
 '<span class="meta-divider"></span>'+
@@ -2135,6 +2136,41 @@ return '<div class="modalwrap" data-action="dguide-close"><div class="modal glos
 '<div class="gloss-list">'+body+'</div>'+
 '<div class="note" style="padding:10px 16px">전자공시(DART) 유형을 쉽게 이해하기 위한 자체 작성 가이드입니다. 투자 판단의 근거가 아닙니다.</div>'+
 '</div></div>';
+}
+function ipoModalHTML(){
+if(!state.ipoOpen) return '';
+var f=state.feedIpo;
+var body;
+if(!f){ body='<div class="adm-load">불러오는 중…</div>'; }
+else if(f.error){ body='<div class="ce-note">'+esc(f.error)+'</div>'; }
+else if(!f.items || !f.items.length){ body='<div class="ce-note">'+esc((f&&f.note)||"최근 신규 공모 공시가 없습니다.")+'</div>'; }
+else {
+  body=f.items.map(function(it){ return ipoItemHTML(it); }).join("")+
+    '<div class="policy-attr">📋 '+esc(f.attribution||"금융감독원 전자공시(DART)")+'</div>';
+}
+var mini=state.ipoMin?' ce-min':'';
+var pos=state.ipoPos;
+var style=(pos?('position:fixed;left:'+pos.x+'px;top:'+pos.y+'px;margin:0;transform:none;'):'');
+return '<div class="floatwrap'+mini+'"><div class="modal hot-float float-win'+mini+'" data-stop="1" data-poskey="ipoPos" style="'+style+'">'+
+  '<div class="modal-h float-drag"><b>🎯 공모주(IPO) 일정</b>'+
+    '<span class="ce-winbtns">'+
+      '<button class="ce-winbtn" data-action="ipo-min" title="'+(state.ipoMin?'확장':'축소')+'">'+(state.ipoMin?'⊡':'⊟')+'</button>'+
+      '<button class="ce-winbtn" data-action="ipo-close" title="닫기">✕</button>'+
+    '</span></div>'+
+  (state.ipoMin?'':('<div class="feedbody hot-body">'+body+'</div>'))+
+  '</div></div>';
+}
+function ipoItemHTML(it){
+var tagCls = it.tag==="정정"?"imp-mid":(it.tag==="철회"?"imp-hi":"imp-lo");
+var badge='<span class="hot-badge '+tagCls+'">🎯 '+esc(it.tag||"신규")+'</span>';
+var d = tFmt(it.published_at, it.date_only?"date_md":"md_smart");
+var corp='<span class="hot-corp">'+esc(it.corp||"")+(it.symbol?' ('+esc(it.symbol)+')':'')+'</span>';
+var title = it.url
+? '<a class="ntitle" href="'+esc(it.url)+'" target="_blank" rel="noopener">'+esc(it.title)+'</a>'
+: '<div class="ntitle">'+esc(it.title)+'</div>';
+return '<div class="fitem hot-item"><div class="nbody">'+
+  '<div class="hot-top">'+badge+corp+'</div>'+title+
+  '<div class="nmeta"><span class="ndate">'+esc(d)+'</span></div></div></div>';
 }
 function hotDiscModalHTML(){
 if(!state.hotOpen) return '';
@@ -3182,6 +3218,7 @@ dguideModalHTML()+
 startGuideModalHTML()+
 corpEventsModalHTML()+
 hotDiscModalHTML()+
+ipoModalHTML()+
 calcModalHTML()+
 toastHTML();
 // 열려있는 모든 모달에 드래그·리사이즈 핸들 자동 부착
@@ -4162,6 +4199,12 @@ else if(a==="corpevents"){
   state.corpOpen=true; state.corpMin=false; state.corpTab=state.corpTab||"dividend"; render();
   loadCorpEvents(state.corpTab);
 }
+else if(a==="ipo"){
+  state.ipoOpen=true; state.ipoMin=false; render();
+  getJSON("/api/feed/ipo?limit=40").then(function(j){ state.feedIpo=j; if(state.ipoOpen) render(); }).catch(function(){ if(!state.feedIpo){ state.feedIpo={error:"불러오기 실패"}; } if(state.ipoOpen) render(); });
+}
+else if(a==="ipo-close"){ state.ipoOpen=false; render(); }
+else if(a==="ipo-min"){ state.ipoMin=!state.ipoMin; render(); }
 else if(a==="hotdisc"){
   state.hotOpen=true; state.hotMin=false; render();
   getJSON("/api/feed/hot_disclosures?limit=30").then(function(j){ state.feedHot=j; if(state.hotOpen) render(); }).catch(function(){ if(!state.feedHot){ state.feedHot={error:"불러오기 실패"}; } if(state.hotOpen) render(); });
