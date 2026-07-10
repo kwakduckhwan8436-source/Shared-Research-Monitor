@@ -350,6 +350,62 @@ class DARTProvider(DataProvider):
             "fs_div": fs_pref, "bsns_year": year,
         }
 
+    def multi_financials(self, corp_codes: list[str], year: str) -> dict[str, dict]:
+        """다중회사 주요계정 — 여러 회사 재무를 한 번에(fnlttMultiAcnt.json).
+        반환: {corp_code: {revenue, op_income, net_income, ...}}.
+        corp_codes 는 최대 ~100개씩 나눠 호출(콤마 구분)."""
+        result: dict[str, dict] = {}
+        if not self.api_key or not corp_codes:
+            return result
+        # DART 다중계정은 콤마로 여러 corp_code 허용(넉넉히 100개씩)
+        CHUNK = 100
+        for i in range(0, len(corp_codes), CHUNK):
+            chunk = corp_codes[i:i + CHUNK]
+            try:
+                body = self._get("/fnlttMultiAcnt.json", {
+                    "corp_code": ",".join(chunk),
+                    "bsns_year": year, "reprt_code": REPRT_ANNUAL,
+                })
+            except ProviderError:
+                continue
+            # corp_code별로 행을 모아서 파싱
+            by_corp: dict[str, list] = {}
+            for r in (body.get("list") or []):
+                cc = r.get("corp_code", "")
+                if cc:
+                    by_corp.setdefault(cc, []).append(r)
+            for cc, all_rows in by_corp.items():
+                fs_pref = "CFS" if any(r.get("fs_div") == "CFS" for r in all_rows) else "OFS"
+                rows = [r for r in all_rows if r.get("fs_div") == fs_pref] or all_rows
+                IS = ("IS", "CIS"); BS = ("BS",)
+                rev = _pick(rows, IS, lambda n: n in ("매출액", "수익(매출액)", "영업수익"))
+                op = _pick(rows, IS, lambda n: n.startswith("영업이익"))
+                net = _pick(rows, IS, lambda n: n.startswith("당기순이익"))
+                liab = _pick(rows, BS, lambda n: n == "부채총계")
+                equity = _pick(rows, BS, lambda n: n == "자본총계")
+                revenue = _amt(rev.get("thstrm_amount")) if rev else None
+                op_income = _amt(op.get("thstrm_amount")) if op else None
+                net_income = _amt(net.get("thstrm_amount")) if net else None
+                total_liab = _amt(liab.get("thstrm_amount")) if liab else None
+                total_equity = _amt(equity.get("thstrm_amount")) if equity else None
+                rev_prev = _amt(rev.get("frmtrm_amount")) if rev else None
+                op_prev = _amt(op.get("frmtrm_amount")) if op else None
+                if revenue is None and op_income is None and net_income is None:
+                    continue
+                debt_ratio = (total_liab / total_equity * 100.0
+                              if (total_liab is not None and total_equity) else None)
+                result[cc] = {
+                    "revenue": revenue, "op_income": op_income, "net_income": net_income,
+                    "total_liab": total_liab, "total_equity": total_equity,
+                    "debt_ratio": round(debt_ratio, 1) if debt_ratio is not None else None,
+                    "revenue_yoy": _round(_yoy(revenue, rev_prev)),
+                    "op_yoy": _round(_yoy(op_income, op_prev)),
+                    "op_margin": (round(op_income / revenue * 100.0, 1)
+                                  if (op_income is not None and revenue) else None),
+                    "fs_div": fs_pref, "bsns_year": year,
+                }
+        return result
+
     def fetch(self, symbol: str, kind: str, *, now: datetime) -> Optional[DataPoint]:
         if kind != Kind.FINANCIALS.value:
             return None

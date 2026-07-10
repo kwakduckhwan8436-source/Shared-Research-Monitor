@@ -17,7 +17,7 @@ from typing import Any, Optional
 
 from app.llm import explain as explain_mod
 
-BUILD_VERSION = "2026.07.05-news1"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
+BUILD_VERSION = "2026.07.05-finrank1"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
 
 
 def _rsi_series(values: list, period: int = 14) -> list:
@@ -1536,6 +1536,106 @@ def register_routes(app: Any, ctx: Any) -> None:
         elif not items:
             out["note"] = "최근 30일 내 신규 공모(증권신고) 공시가 없습니다."
         return out
+
+    _finance_cache = {"rows": [], "at": 0.0, "year": "", "err": None}
+
+    @app.get("/api/finance/ranking")
+    def finance_ranking(sort: str = "revenue", sector: str = "", refresh: bool = False) -> dict:
+        """주요 기업 재무 순위표 — DART 다중회사 주요계정(매출·영업이익·순이익 등).
+        시세가 아니라 재무 데이터라 공개모드에서도 합법. 하루 1회 캐싱(호출 절약).
+        sort: revenue|op_income|net_income|op_margin|revenue_yoy|debt_ratio
+        sector: 업종 필터(빈 값이면 전체)."""
+        from app.core.major_stocks import major_symbols, major_name, major_sector
+        prov = getattr(ctx, "dart", None)
+        if prov is None or not getattr(prov, "api_key", ""):
+            return {"rows": [], "error": "DART 키가 없어 재무 데이터를 불러올 수 없습니다."}
+
+        now_t = _time.time()
+        # 24시간 캐시(재무는 분기 단위로만 바뀜)
+        if refresh or not _finance_cache["rows"] or (now_t - _finance_cache["at"] > 86400):
+            _finance_cache["at"] = now_t
+            try:
+                # 대표 종목코드 → corp_code 매핑
+                cmap = getattr(prov, "corp_code_map", {}) or {}
+                syms = major_symbols()
+                code_to_sym = {}
+                corp_codes = []
+                for s in syms:
+                    cc = cmap.get(s)
+                    if cc:
+                        corp_codes.append(cc)
+                        code_to_sym[cc] = s
+                if not corp_codes:
+                    _finance_cache["err"] = ("corp_code 매핑이 아직 준비되지 않았습니다"
+                                             "(서버 기동 직후일 수 있음). 잠시 후 다시 시도하세요.")
+                    _finance_cache["rows"] = []
+                else:
+                    # 재무 연도: 작년(사업보고서는 3~4월 제출이라 연초엔 재작년일 수 있음)
+                    yr = ctx.clock.now().year - 1
+                    fin_map = prov.multi_financials(corp_codes, str(yr))
+                    # 연초라 작년 데이터가 아직 없으면 재작년으로 재시도
+                    if len(fin_map) < len(corp_codes) * 0.3:
+                        fin_map2 = prov.multi_financials(corp_codes, str(yr - 1))
+                        for k, v in fin_map2.items():
+                            fin_map.setdefault(k, v)
+                    rows = []
+                    for cc, fin in fin_map.items():
+                        sym = code_to_sym.get(cc, "")
+                        if not sym:
+                            continue
+                        rows.append({
+                            "symbol": sym,
+                            "name": ctx.name_of(sym) or major_name(sym),
+                            "sector": major_sector(sym),
+                            "revenue": fin.get("revenue"),
+                            "op_income": fin.get("op_income"),
+                            "net_income": fin.get("net_income"),
+                            "op_margin": fin.get("op_margin"),
+                            "debt_ratio": fin.get("debt_ratio"),
+                            "revenue_yoy": fin.get("revenue_yoy"),
+                            "op_yoy": fin.get("op_yoy"),
+                            "bsns_year": fin.get("bsns_year"),
+                        })
+                    _finance_cache["rows"] = rows
+                    _finance_cache["year"] = str(yr)
+                    _finance_cache["err"] = None
+            except Exception as e:
+                _finance_cache["err"] = f"재무 조회 오류: {e}"
+
+        rows = list(_finance_cache["rows"])
+        # 업종 필터
+        if sector:
+            rows = [r for r in rows if r.get("sector") == sector]
+        # 정렬. 부채비율만 오름차순(낮을수록 좋음), 나머지 내림차순. None은 항상 뒤로.
+        sort_key = sort if sort in ("revenue", "op_income", "net_income", "op_margin",
+                                    "revenue_yoy", "op_yoy", "debt_ratio") else "revenue"
+        asc = (sort_key == "debt_ratio")
+        def _k(r):
+            v = r.get(sort_key)
+            has = v is not None
+            # 값 부분은 오름/내림에 맞게, None 그룹은 항상 뒤로 가도록 별도 처리
+            return (0 if has else 1, (v if has else 0))
+        # None을 뒤로 유지하려면: 우선 None 여부로 나누고, 값은 정렬 방향대로
+        present = [r for r in rows if r.get(sort_key) is not None]
+        absent = [r for r in rows if r.get(sort_key) is None]
+        present.sort(key=lambda r: r.get(sort_key), reverse=not asc)
+        rows = present + absent
+
+        out = {"rows": rows, "count": len(rows), "sort": sort_key, "sector": sector,
+               "year": _finance_cache.get("year", ""),
+               "ts": ctx.clock.now().isoformat(),
+               "attribution": "금융감독원 전자공시(DART) 다중회사 주요계정 · 재무는 시세가 아님 · 투자권유 아님"}
+        if not rows and _finance_cache["err"]:
+            out["error"] = _finance_cache["err"]
+        elif not rows:
+            out["note"] = "재무 데이터가 아직 없습니다(잠시 후 다시 시도)."
+        return out
+
+    @app.get("/api/finance/sectors")
+    def finance_sectors() -> dict:
+        """재무 순위표 업종 목록."""
+        from app.core.major_stocks import sectors
+        return {"sectors": sectors()}
 
     @app.get("/api/feed/policy")
     def feed_policy(limit: int = 30) -> dict:
