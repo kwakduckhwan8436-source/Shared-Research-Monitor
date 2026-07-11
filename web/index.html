@@ -450,6 +450,16 @@ gap:1px;background:var(--line);min-height:0;overflow:hidden}
 .fin-num{font-variant-numeric:tabular-nums;color:var(--ink2)}
 .fin-num.neg{color:var(--red)}
 .fin-num.pos{color:var(--teal)}
+.fin-panel-body{padding:0;display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.fin-panel-body .fin-tablewrap{flex:1;min-height:0}
+.fin-panel-body .fin-toolbar{position:sticky;top:0;z-index:2}
+.fin-expand{font-size:11px;padding:3px 9px;border-radius:11px;border:1px solid var(--line2);
+  background:var(--panel3);color:var(--ink2);cursor:pointer;white-space:nowrap;margin-left:auto}
+.fin-expand:hover{background:var(--teal);color:#04211d;border-color:var(--teal)}
+.chat-float{width:min(420px,92vw)}
+.chat-float-body{display:flex;flex-direction:column;height:min(560px,72vh);overflow:hidden}
+.chat-float-body .feedhead.chathead{flex:none}
+.chat-float-body .chatbodywrap{flex:1;min-height:0}
 /* 채팅 패널 */
 .chatbar{display:flex;gap:6px;padding:10px 12px;border-top:1px solid var(--line);
 background:linear-gradient(180deg,var(--panel2),var(--panel))}
@@ -1393,7 +1403,7 @@ cal: null, calY: 0, calM: 0, calFilter: {}, calAdminOpen: false, calAdminList: n
 glossaryOpen: false, glossary: null, glossQ: "", glossCat: "전체", dguideOpen: false, dguide: null,
 startOpen: false, startGuide: null, startTab: "guide",
 stock: null, stockLoading: false, live: null, newsTs: "",
-feedDisc: null, feedNews: null, feedReports: null, feedPolicy: null, feedHot: null, feedIpo: null, ipoOpen: false, ipoMin: false, ipoPos: null, policyFilter: "all", hotOpen: false, hotMin: false, hotPos: null, finOpen: false, finMin: false, finPos: null, finRank: null, finSort: "revenue", finSector: "", finSectors: null, modal: false, reports: null, reportsLoading: false,
+feedDisc: null, feedNews: null, feedReports: null, feedPolicy: null, feedHot: null, feedIpo: null, ipoOpen: false, ipoMin: false, ipoPos: null, policyFilter: "all", hotOpen: false, hotMin: false, hotPos: null, finOpen: false, finMin: false, finPos: null, finRank: null, finSort: "revenue", finSector: "", finSectors: null, chatOpen: false, chatMin: false, chatPos: null, modal: false, reports: null, reportsLoading: false,
 chat: [], chatLastId: 0, chatUser: "익명", reacts: {}, indices: null, fx: null, corpOpen: false, corpTab: "dividend", corpData: null, corpMin: false, corpPos: null, corpQuery: "", calcOpen: false, calcTab: "yield", calcVals: {}, calcMin: false, calcPos: null, calcW: 520, recsCache: {},
 notice: "", emojiOpen: false, briefing: null, briefingOpen: false, presence: {site:0,chat:0},
 mflowOpen: false, mflow: null, mflowMkt: "KOSPI",
@@ -1480,6 +1490,7 @@ return '<div class="top">'+
 '<button class="btn" data-action="dguide">📑 공시읽기</button>'+
 '<button class="btn" data-action="hotdisc">🔥 주요공시</button>'+
 '<button class="btn" data-action="finance">📊 재무순위</button>'+
+'<button class="btn" data-action="chat-toggle">💬 채팅</button>'+
 '<button class="btn" data-action="calc">🧮 투자계산기</button>'+
 '<button class="btn" data-action="startguide">🚀 주식입문</button>'+
 '<span class="meta-divider"></span>'+
@@ -1631,11 +1642,53 @@ function fmtPct1(v){ return v==null?'–':((v>=0?'':'')+v.toFixed(1)+'%'); }
 var FIN_SORTS=[
   {k:"revenue",label:"매출"},
   {k:"op_income",label:"영업이익"},
-  {k:"net_income",label:"순이익"},
   {k:"op_margin",label:"영업이익률"},
+  {k:"roe",label:"ROE"},
   {k:"revenue_yoy",label:"매출성장"},
   {k:"debt_ratio",label:"부채비율↓"}
 ];
+function financePanelHTML(){
+var f=state.finRank;
+// 패널이 처음 보일 때 자동 로드
+if(f===null && !state._finPanelLoading){
+  state._finPanelLoading=true;
+  if(!state.finSectors){
+    getJSON("/api/finance/sectors").then(function(j){ state.finSectors=(j&&j.sectors)||[]; }).catch(function(){});
+  }
+  loadFinance();
+}
+var head='<div class="feedhead"><span class="feedtitle">📊 주요 기업 재무 순위</span>'+
+  '<span class="feedcount">'+(f&&f.rows?f.rows.length:0)+'개</span></div>';
+var body;
+if(!f){ body='<div class="note">재무 데이터 불러오는 중…</div>'; }
+else if(f.error){ body='<div class="note">'+esc(f.error)+'</div>'; }
+else if(!f.rows||!f.rows.length){ body='<div class="note">'+esc((f&&f.note)||"재무 데이터가 없습니다.")+'</div>'; }
+else {
+  var sortBar=FIN_SORTS.map(function(s){
+    return '<button class="fin-sbtn'+(state.finSort===s.k?" on":"")+'" data-action="fin-sort" data-k="'+s.k+'">'+s.label+'</button>';
+  }).join("");
+  var rows=f.rows.map(function(r,i){
+    var opPos=(r.op_income!=null&&r.op_income>=0);
+    var yoyPos=(r.revenue_yoy!=null&&r.revenue_yoy>=0);
+    return '<tr>'+
+      '<td class="fin-rank">'+(i+1)+'</td>'+
+      '<td class="fin-nm"><b>'+esc(r.name)+'</b><span class="fin-sec">'+esc(r.sector||'')+'</span></td>'+
+      '<td class="fin-num">'+fmtWonShort(r.revenue)+'</td>'+
+      '<td class="fin-num '+(opPos?'':'neg')+'">'+fmtWonShort(r.op_income)+'</td>'+
+      '<td class="fin-num">'+fmtPct1(r.op_margin)+'</td>'+
+      '<td class="fin-num">'+fmtPct1(r.roe)+'</td>'+
+      '<td class="fin-num '+(yoyPos?'pos':'neg')+'">'+fmtPctYoy(r.revenue_yoy)+'</td>'+
+      '</tr>';
+  }).join("");
+  body='<div class="fin-toolbar"><div class="fin-btns">'+sortBar+'</div>'+
+      '<button class="fin-expand" data-action="finance" title="크게 보기">⛶ 크게</button></div>'+
+    '<div class="fin-tablewrap"><table class="fin-table"><thead><tr>'+
+      '<th>#</th><th>기업</th><th>매출</th><th>영업익</th><th>영업%</th><th>ROE</th><th>매출성장</th>'+
+      '</tr></thead><tbody>'+rows+'</tbody></table></div>'+
+    '<div class="policy-attr">📊 DART · '+esc((f&&f.year)||'')+'년 · 시세아님</div>';
+}
+return head+'<div class="feedbody fin-panel-body">'+body+'</div>';
+}
 function financeModalHTML(){
 if(!state.finOpen) return '';
 var f=state.finRank;
@@ -1662,6 +1715,7 @@ else {
       '<td class="fin-num '+(opPos?'':'neg')+'">'+fmtWonShort(r.op_income)+'</td>'+
       '<td class="fin-num '+(netPos?'':'neg')+'">'+fmtWonShort(r.net_income)+'</td>'+
       '<td class="fin-num">'+fmtPct1(r.op_margin)+'</td>'+
+      '<td class="fin-num">'+fmtPct1(r.roe)+'</td>'+
       '<td class="fin-num '+(yoyPos?'pos':'neg')+'">'+fmtPctYoy(r.revenue_yoy)+'</td>'+
       '<td class="fin-num">'+fmtPct1(r.debt_ratio)+'</td>'+
       '</tr>';
@@ -1673,7 +1727,7 @@ else {
       '<div class="fin-row-lbl">업종</div><div class="fin-btns fin-sec-wrap">'+secOpts+'</div>'+
     '</div>'+
     '<div class="fin-tablewrap"><table class="fin-table"><thead><tr>'+
-      '<th>#</th><th>기업</th><th>매출</th><th>영업이익</th><th>순이익</th><th>영업이익률</th><th>매출성장</th><th>부채비율</th>'+
+      '<th>#</th><th>기업</th><th>매출</th><th>영업이익</th><th>순이익</th><th>영업이익률</th><th>ROE</th><th>매출성장</th><th>부채비율</th>'+
       '</tr></thead><tbody>'+rows+'</tbody></table></div>'+
     '<div class="policy-attr">📊 '+esc(f.attribution||"금융감독원 전자공시(DART)")+' · '+esc(f.year||'')+'년 기준</div>';
 }
@@ -2965,6 +3019,20 @@ return '<span class="emoji" data-action="emoji-pick" data-emoji="'+e+'">'+e+'</s
 }).join("")+'</div>';
 }
 var QUICK = ["📈 상승 주목","📉 조정 주의","💰 거래대금 급증","🔥 강한 수급","⚠️ 변동성 큼","🎯 관심종목","🐂 매수세","🐻 매도세","🚀 가즈아","💎 존버","🙏 떡상기원","👀 지켜보는중"];
+function chatFloatHTML(){
+if(!state.chatOpen) return '';
+var mini=state.chatMin?' ce-min':'';
+var pos=state.chatPos;
+var style=(pos?('position:fixed;left:'+pos.x+'px;top:'+pos.y+'px;margin:0;transform:none;'):'');
+return '<div class="floatwrap'+mini+'"><div class="modal hot-float chat-float float-win'+mini+'" data-stop="1" data-poskey="chatPos" style="'+style+'">'+
+  '<div class="modal-h float-drag"><b>💬 실시간 채팅</b>'+
+    '<span class="ce-winbtns">'+
+      '<button class="ce-winbtn" data-action="chat-min" title="'+(state.chatMin?'확장':'축소')+'">'+(state.chatMin?'⊡':'⊟')+'</button>'+
+      '<button class="ce-winbtn" data-action="chat-close" title="닫기">✕</button>'+
+    '</span></div>'+
+  (state.chatMin?'':('<div class="chat-float-body" id="chat-panel">'+chatPanelHTML()+'</div>'))+
+  '</div></div>';
+}
 function chatPanelHTML(){
 var live = state.mode!=="sample" ? '<span class="feedlive"><span class="livedot"></span></span>' : '';
 var soundIc = state.chatSound ? "🔔" : "🔕";
@@ -3303,7 +3371,7 @@ modeBanner()+
 '<div class="col-newsstack mpane" data-pane="news">'+
 '<div class="feedcol ncell-full" id="feed-news">'+feedPanelHTML("news")+'</div>'+
 '</div>'+
-'<div class="feedcol gcell mpane" data-pane="chat" id="chat-panel">'+chatPanelHTML()+'</div>'+
+'<div class="feedcol gcell mpane" data-pane="chat" id="panel-finance">'+financePanelHTML()+'</div>'+
 '</div>'+
 mobileNavHTML()+
 modalHTML()+
@@ -3327,6 +3395,7 @@ startGuideModalHTML()+
 corpEventsModalHTML()+
 hotDiscModalHTML()+
 financeModalHTML()+
+chatFloatHTML()+
 calcModalHTML()+
 toastHTML();
 // 열려있는 모든 모달에 드래그·리사이즈 핸들 자동 부착
@@ -3684,8 +3753,12 @@ function loadFinance(){
 var sort=state.finSort||"revenue";
 var sec=state.finSector||"";
 var url="/api/finance/ranking?sort="+encodeURIComponent(sort)+(sec?("&sector="+encodeURIComponent(sec)):"");
-getJSON(url).then(function(j){ state.finRank=j; if(state.finOpen) render(); })
-.catch(function(){ if(!state.finRank){ state.finRank={error:"불러오기 실패"}; } if(state.finOpen) render(); });
+getJSON(url).then(function(j){ state.finRank=j; patchFinancePanel(); if(state.finOpen) render(); })
+.catch(function(){ if(!state.finRank){ state.finRank={error:"불러오기 실패"}; } patchFinancePanel(); if(state.finOpen) render(); });
+}
+function patchFinancePanel(){
+var el=document.getElementById("panel-finance");
+if(el){ el.innerHTML=financePanelHTML(); }
 }
 function pollReports(){
 if(state.mode==="sample") return;
@@ -4322,6 +4395,9 @@ else if(a==="ipo"){
 }
 else if(a==="ipo-close"){ state.ipoOpen=false; render(); }
 else if(a==="ipo-min"){ state.ipoMin=!state.ipoMin; render(); }
+else if(a==="chat-toggle"){ state.chatOpen=!state.chatOpen; state.chatMin=false; render(); }
+else if(a==="chat-close"){ state.chatOpen=false; render(); }
+else if(a==="chat-min"){ state.chatMin=!state.chatMin; render(); }
 else if(a==="finance"){
   state.finOpen=true; state.finMin=false; render();
   // 업종 목록 먼저(1회)

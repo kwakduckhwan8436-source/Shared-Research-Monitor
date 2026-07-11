@@ -402,6 +402,10 @@ class DARTProvider(DataProvider):
                     "op_yoy": _round(_yoy(op_income, op_prev)),
                     "op_margin": (round(op_income / revenue * 100.0, 1)
                                   if (op_income is not None and revenue) else None),
+                    "net_margin": (round(net_income / revenue * 100.0, 1)
+                                   if (net_income is not None and revenue) else None),
+                    "roe": (round(net_income / total_equity * 100.0, 1)
+                            if (net_income is not None and total_equity) else None),
                     "fs_div": fs_pref, "bsns_year": year,
                 }
         return result
