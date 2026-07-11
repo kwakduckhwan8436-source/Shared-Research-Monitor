@@ -456,6 +456,8 @@ gap:1px;background:var(--line);min-height:0;overflow:hidden}
 .fin-expand{font-size:11px;padding:3px 9px;border-radius:11px;border:1px solid var(--line2);
   background:var(--panel3);color:var(--ink2);cursor:pointer;white-space:nowrap;margin-left:auto}
 .fin-expand:hover{background:var(--teal);color:#04211d;border-color:var(--teal)}
+.fin-scopebar{gap:6px}
+.fin-cnt{margin-left:auto;font-size:11px;color:var(--dim)}
 .chat-float{width:min(420px,92vw)}
 .chat-float-body{display:flex;flex-direction:column;height:min(560px,72vh);overflow:hidden}
 .chat-float-body .feedhead.chathead{flex:none}
@@ -1403,7 +1405,7 @@ cal: null, calY: 0, calM: 0, calFilter: {}, calAdminOpen: false, calAdminList: n
 glossaryOpen: false, glossary: null, glossQ: "", glossCat: "전체", dguideOpen: false, dguide: null,
 startOpen: false, startGuide: null, startTab: "guide",
 stock: null, stockLoading: false, live: null, newsTs: "",
-feedDisc: null, feedNews: null, feedReports: null, feedPolicy: null, feedHot: null, feedIpo: null, ipoOpen: false, ipoMin: false, ipoPos: null, policyFilter: "all", hotOpen: false, hotMin: false, hotPos: null, finOpen: false, finMin: false, finPos: null, finRank: null, finSort: "revenue", finSector: "", finSectors: null, chatOpen: (typeof window!=="undefined" && window.innerWidth>760), chatMin: false, chatPos: null, modal: false, reports: null, reportsLoading: false,
+feedDisc: null, feedNews: null, feedReports: null, feedPolicy: null, feedHot: null, feedIpo: null, ipoOpen: false, ipoMin: false, ipoPos: null, policyFilter: "all", hotOpen: false, hotMin: false, hotPos: null, finOpen: false, finMin: false, finPos: null, finRank: null, finSort: "revenue", finSector: "", finSectors: null, finScope: "major", chatOpen: (typeof window!=="undefined" && window.innerWidth>760), chatMin: false, chatPos: null, modal: false, reports: null, reportsLoading: false,
 chat: [], chatLastId: 0, chatUser: "익명", reacts: {}, indices: null, fx: null, corpOpen: false, corpTab: "dividend", corpData: null, corpMin: false, corpPos: null, corpQuery: "", calcOpen: false, calcTab: "yield", calcVals: {}, calcMin: false, calcPos: null, calcW: 520, recsCache: {},
 notice: "", emojiOpen: false, briefing: null, briefingOpen: false, presence: {site:0,chat:0},
 mflowOpen: false, mflow: null, mflowMkt: "KOSPI",
@@ -1686,6 +1688,11 @@ else {
   }).join("");
   body='<div class="fin-toolbar"><div class="fin-btns">'+sortBar+'</div>'+
       '<button class="fin-expand" data-action="finance" title="크게 보기">⛶ 크게</button></div>'+
+    '<div class="fin-toolbar fin-scopebar">'+
+      '<button class="fin-sbtn'+(state.finScope!=="wide"?" on":"")+'" data-action="fin-scope" data-scope="major">대표 96</button>'+
+      '<button class="fin-sbtn'+(state.finScope==="wide"?" on":"")+'" data-action="fin-scope" data-scope="wide">전종목(시총상위)</button>'+
+      '<span class="fin-cnt">'+(f&&f.rows?f.rows.length:0)+'개</span>'+
+    '</div>'+
     '<div class="fin-tablewrap"><table class="fin-table"><thead><tr>'+
       '<th>#</th><th>기업</th><th>매출</th><th>영업익</th><th>영업%</th><th>ROE</th><th>PER</th><th>PBR</th><th>매출성장</th>'+
       '</tr></thead><tbody>'+rows+'</tbody></table></div>'+
@@ -3758,7 +3765,8 @@ getJSON("/api/feed/ipo?limit=40").then(function(j){ state.feedIpo=j; patchFeed("
 function loadFinance(){
 var sort=state.finSort||"revenue";
 var sec=state.finSector||"";
-var url="/api/finance/ranking?sort="+encodeURIComponent(sort)+(sec?("&sector="+encodeURIComponent(sec)):"");
+var scope=state.finScope||"major";
+var url="/api/finance/ranking?sort="+encodeURIComponent(sort)+"&scope="+encodeURIComponent(scope)+(sec?("&sector="+encodeURIComponent(sec)):"");
 getJSON(url).then(function(j){ state.finRank=j; patchFinancePanel(); if(state.finOpen) render(); })
 .catch(function(){ if(!state.finRank){ state.finRank={error:"불러오기 실패"}; } patchFinancePanel(); if(state.finOpen) render(); });
 }
@@ -4416,6 +4424,7 @@ else if(a==="fin-close"){ state.finOpen=false; render(); }
 else if(a==="fin-min"){ state.finMin=!state.finMin; render(); }
 else if(a==="fin-sort"){ state.finSort=t.getAttribute("data-k")||"revenue"; loadFinance(); }
 else if(a==="fin-sector"){ state.finSector=t.getAttribute("data-sec")||""; loadFinance(); }
+else if(a==="fin-scope"){ state.finScope=t.getAttribute("data-scope")||"major"; state.finRank=null; loadFinance(); }
 else if(a==="hotdisc"){
   state.hotOpen=true; state.hotMin=false; render();
   getJSON("/api/feed/hot_disclosures?limit=30").then(function(j){ state.feedHot=j; if(state.hotOpen) render(); }).catch(function(){ if(!state.feedHot){ state.feedHot={error:"불러오기 실패"}; } if(state.hotOpen) render(); });

@@ -17,7 +17,7 @@ from typing import Any, Optional
 
 from app.llm import explain as explain_mod
 
-BUILD_VERSION = "2026.07.05-perpbr1"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
+BUILD_VERSION = "2026.07.05-wide1"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
 
 
 def _rsi_series(values: list, period: int = 14) -> list:
@@ -1538,27 +1538,47 @@ def register_routes(app: Any, ctx: Any) -> None:
             out["note"] = "최근 30일 내 신규 공모(증권신고) 공시가 없습니다."
         return out
 
-    _finance_cache = {"rows": [], "at": 0.0, "year": "", "err": None}
+    _finance_cache = {}   # scope별: {scope: {rows, at, year, err}}
 
     @app.get("/api/finance/ranking")
-    def finance_ranking(sort: str = "revenue", sector: str = "", refresh: bool = False) -> dict:
-        """주요 기업 재무 순위표 — DART 다중회사 주요계정(매출·영업이익·순이익 등).
-        시세가 아니라 재무 데이터라 공개모드에서도 합법. 하루 1회 캐싱(호출 절약).
-        sort: revenue|op_income|net_income|op_margin|revenue_yoy|debt_ratio
-        sector: 업종 필터(빈 값이면 전체)."""
+    def finance_ranking(sort: str = "revenue", sector: str = "",
+                        scope: str = "major", refresh: bool = False) -> dict:
+        """주요 기업 재무 순위표 — DART 재무 + 시세(PER/PBR).
+        scope: major(대표 96개) | wide(시총 상위 ~400개, 시세 API 필요).
+        시세가 아니라 재무 데이터라 공개모드에서도 합법. 하루 1회 캐싱."""
         from app.core.major_stocks import major_symbols, major_name, major_sector
         prov = getattr(ctx, "dart", None)
         if prov is None or not getattr(prov, "api_key", ""):
             return {"rows": [], "error": "DART 키가 없어 재무 데이터를 불러올 수 없습니다."}
 
+        scope = scope if scope in ("major", "wide") else "major"
         now_t = _time.time()
-        # 24시간 캐시(재무는 분기 단위로만 바뀜)
-        if refresh or not _finance_cache["rows"] or (now_t - _finance_cache["at"] > 86400):
-            _finance_cache["at"] = now_t
+        cached = _finance_cache.get(scope)
+        if refresh or not cached or (now_t - cached.get("at", 0) > 86400):
+            entry = {"rows": [], "at": now_t, "year": "", "err": None}
             try:
-                # 대표 종목코드 → corp_code 매핑
                 cmap = getattr(prov, "corp_code_map", {}) or {}
-                syms = major_symbols()
+                sp = getattr(ctx, "stock_price", None)
+                sp_on = sp is not None and getattr(sp, "enabled", False)
+                price_map = {}
+                if sp_on:
+                    try:
+                        price_map = sp.fetch_all_prices(ctx.clock.now())
+                    except Exception:
+                        price_map = {}
+                # 종목 선정
+                sym_name = {}
+                if scope == "wide" and price_map:
+                    ranked = sorted(
+                        [(s, d.get("market_cap") or 0) for s, d in price_map.items()],
+                        key=lambda x: x[1], reverse=True)
+                    top = [s for s, _ in ranked[:400]]
+                    syms = list(set(major_symbols()) | set(top))
+                    for s, d in price_map.items():
+                        sym_name[s] = d.get("name") or ""
+                else:
+                    syms = major_symbols()
+                sym_sector = {s: major_sector(s) for s in major_symbols()}
                 code_to_sym = {}
                 corp_codes = []
                 for s in syms:
@@ -1567,32 +1587,20 @@ def register_routes(app: Any, ctx: Any) -> None:
                         corp_codes.append(cc)
                         code_to_sym[cc] = s
                 if not corp_codes:
-                    _finance_cache["err"] = ("corp_code 매핑이 아직 준비되지 않았습니다"
-                                             "(서버 기동 직후일 수 있음). 잠시 후 다시 시도하세요.")
-                    _finance_cache["rows"] = []
+                    entry["err"] = ("corp_code 매핑이 아직 준비되지 않았습니다"
+                                    "(서버 기동 직후일 수 있음). 잠시 후 다시 시도하세요.")
                 else:
-                    # 재무 연도: 작년(사업보고서는 3~4월 제출이라 연초엔 재작년일 수 있음)
                     yr = ctx.clock.now().year - 1
                     fin_map = prov.multi_financials(corp_codes, str(yr))
-                    # 연초라 작년 데이터가 아직 없으면 재작년으로 재시도
                     if len(fin_map) < len(corp_codes) * 0.3:
                         fin_map2 = prov.multi_financials(corp_codes, str(yr - 1))
                         for k, v in fin_map2.items():
                             fin_map.setdefault(k, v)
-                    # 시세(종가·시가총액) 조회 → PER/PBR 계산용. 실패해도 재무는 표시.
-                    price_map = {}
-                    sp = getattr(ctx, "stock_price", None)
-                    if sp is not None and getattr(sp, "enabled", False):
-                        try:
-                            price_map = sp.fetch_all_prices(ctx.clock.now())
-                        except Exception:
-                            price_map = {}
                     rows = []
                     for cc, fin in fin_map.items():
                         sym = code_to_sym.get(cc, "")
                         if not sym:
                             continue
-                        # PER/PBR = 시가총액 ÷ 순이익 / 자본
                         pinfo = price_map.get(sym) or {}
                         mcap = pinfo.get("market_cap")
                         net = fin.get("net_income")
@@ -1601,10 +1609,12 @@ def register_routes(app: Any, ctx: Any) -> None:
                                if (mcap and net and net > 0) else None)
                         pbr = (round(mcap / eq, 2)
                                if (mcap and eq and eq > 0) else None)
+                        nm = ctx.name_of(sym)
+                        if not nm or nm == sym:
+                            nm = sym_name.get(sym) or major_name(sym)
                         rows.append({
-                            "symbol": sym,
-                            "name": ctx.name_of(sym) or major_name(sym),
-                            "sector": major_sector(sym),
+                            "symbol": sym, "name": nm,
+                            "sector": sym_sector.get(sym, ""),
                             "revenue": fin.get("revenue"),
                             "op_income": fin.get("op_income"),
                             "net_income": fin.get("net_income"),
@@ -1614,20 +1624,19 @@ def register_routes(app: Any, ctx: Any) -> None:
                             "debt_ratio": fin.get("debt_ratio"),
                             "revenue_yoy": fin.get("revenue_yoy"),
                             "op_yoy": fin.get("op_yoy"),
-                            "per": per,
-                            "pbr": pbr,
-                            "close": pinfo.get("close"),
-                            "market_cap": mcap,
+                            "per": per, "pbr": pbr,
+                            "close": pinfo.get("close"), "market_cap": mcap,
                             "price_date": pinfo.get("bas_dt"),
                             "bsns_year": fin.get("bsns_year"),
                         })
-                    _finance_cache["rows"] = rows
-                    _finance_cache["year"] = str(yr)
-                    _finance_cache["err"] = None
+                    entry["rows"] = rows
+                    entry["year"] = str(yr)
             except Exception as e:
-                _finance_cache["err"] = f"재무 조회 오류: {e}"
+                entry["err"] = f"재무 조회 오류: {e}"
+            _finance_cache[scope] = entry
+            cached = entry
 
-        rows = list(_finance_cache["rows"])
+        rows = list(cached.get("rows") or [])
         # 업종 필터
         if sector:
             rows = [r for r in rows if r.get("sector") == sector]
@@ -1648,11 +1657,11 @@ def register_routes(app: Any, ctx: Any) -> None:
         rows = present + absent
 
         out = {"rows": rows, "count": len(rows), "sort": sort_key, "sector": sector,
-               "year": _finance_cache.get("year", ""),
+               "scope": scope, "year": cached.get("year", ""),
                "ts": ctx.clock.now().isoformat(),
                "attribution": "금융감독원 전자공시(DART) 다중회사 주요계정 · 재무는 시세가 아님 · 투자권유 아님"}
-        if not rows and _finance_cache["err"]:
-            out["error"] = _finance_cache["err"]
+        if not rows and cached.get("err"):
+            out["error"] = cached["err"]
         elif not rows:
             out["note"] = "재무 데이터가 아직 없습니다(잠시 후 다시 시도)."
         return out
