@@ -17,7 +17,7 @@ from typing import Any, Optional
 
 from app.llm import explain as explain_mod
 
-BUILD_VERSION = "2026.07.05-preset1"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
+BUILD_VERSION = "2026.07.05-stable1"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
 
 
 def _rsi_series(values: list, period: int = 14) -> list:
@@ -1575,6 +1575,8 @@ def register_routes(app: Any, ctx: Any) -> None:
         return out
 
     _finance_cache = {}   # scope별: {scope: {rows, at, year, err}}
+    _price_cache = {}     # 시세 캐시(전종목 종가·시총) 재활용용
+    _finance_lock = __import__("threading").Lock()   # 빌드 중복 실행 방지
     _FIN_DISK = "finance_cache.json"
 
     def _finance_load_disk():
@@ -1625,10 +1627,18 @@ def register_routes(app: Any, ctx: Any) -> None:
             sp_on = sp is not None and getattr(sp, "enabled", False)
             price_map = {}
             if sp_on:
-                try:
-                    price_map = sp.fetch_all_prices(ctx.clock.now())
-                except Exception:
-                    price_map = {}
+                # 시세 캐시: 전일 종가라 자주 안 바뀜 → 1시간 캐시(wide·all 빌드 간 재활용)
+                pc = _price_cache.get("map")
+                if pc and (_time.time() - _price_cache.get("at", 0) < 3600):
+                    price_map = pc
+                else:
+                    try:
+                        price_map = sp.fetch_all_prices(ctx.clock.now())
+                        if price_map:
+                            _price_cache["map"] = price_map
+                            _price_cache["at"] = _time.time()
+                    except Exception:
+                        price_map = pc or {}
             sym_name = {}
             sym_market = {}
             for s, d in price_map.items():
@@ -1771,9 +1781,15 @@ def register_routes(app: Any, ctx: Any) -> None:
             _finance_load_disk()
         cached = _finance_cache.get(ckey)
         if refresh or not cached or (now_t - cached.get("at", 0) > 86400):
-            cached = _build_finance(scope, period)
-            _finance_cache[ckey] = cached
-            _finance_save_disk()
+            with _finance_lock:
+                # 락 대기 중 다른 요청이 이미 빌드했으면 그걸 사용(중복 빌드 방지)
+                again = _finance_cache.get(ckey)
+                if (not refresh) and again and (_time.time() - again.get("at", 0) <= 86400):
+                    cached = again
+                else:
+                    cached = _build_finance(scope, period)
+                    _finance_cache[ckey] = cached
+                    _finance_save_disk()
 
         rows = list(cached.get("rows") or [])
         # 업종 필터
