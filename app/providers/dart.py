@@ -360,7 +360,9 @@ class DARTProvider(DataProvider):
         if not self.api_key or not corp_codes:
             return result
         # DART 다중계정은 콤마 구분이지만 대량은 불안정 → 안전하게 소량씩.
-        CHUNK = 50
+        # 청크 크기: DART 다중계정은 콤마로 여러 회사 허용. 크게 잡아 호출 횟수를 줄임(속도↑).
+        # 단, 너무 크면 응답 불안정 → 100개 선에서 균형.
+        CHUNK = 100
         chunks = [corp_codes[i:i + CHUNK] for i in range(0, len(corp_codes), CHUNK)]
 
         def _fetch_chunk(chunk):
@@ -390,7 +392,7 @@ class DARTProvider(DataProvider):
             bodies = [_fetch_chunk(chunks[0])] if chunks else []
         else:
             from concurrent.futures import ThreadPoolExecutor
-            workers = min(4, len(chunks))   # 4개 동시(한도 회피 + 속도 균형)
+            workers = min(5, len(chunks))   # 5개 동시(청크 100개라 총 요청 적음 + 재시도로 누락 방지)
             with ThreadPoolExecutor(max_workers=workers) as ex:
                 bodies = list(ex.map(_fetch_chunk, chunks))
 

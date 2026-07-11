@@ -556,9 +556,13 @@ def create_app(cfg: Optional[Config] = None):
                 import threading as _tw
                 def _warm():
                     try:
-                        warm("wide")   # 시총 상위 400개 미리 계산(사용자 대기 없앰)
+                        warm("wide")   # 1) 시총 상위 400개 먼저(빠르게 준비)
                     except Exception as _e:
-                        print(f"[재무 워밍업] 실패(무시): {_e}")
+                        print(f"[재무 워밍업 wide] 실패(무시): {_e}")
+                    try:
+                        warm("all")    # 2) 이어서 전종목도 미리(사용자 대기 없앰)
+                    except Exception as _e:
+                        print(f"[재무 워밍업 all] 실패(무시): {_e}")
                 _tw.Thread(target=_warm, daemon=True, name="finance-warmup").start()
             return
         if ctx.config.data_source == "mock":

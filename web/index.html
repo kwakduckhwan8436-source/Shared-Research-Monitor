@@ -493,7 +493,10 @@ gap:1px;background:var(--line);min-height:0;overflow:hidden}
 .sd-news-ti{flex:1;color:var(--ink);line-height:1.4}
 .sd-news-a:hover .sd-news-ti{color:var(--teal)}
 .sd-news-dt{flex:none;font-size:10px;color:var(--dim)}
-.scr-modal{width:min(680px,94vw);max-height:88vh;display:flex;flex-direction:column}
+.scr-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:1100;
+  width:min(680px,94vw);max-height:88vh;display:flex;flex-direction:column;
+  box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1090}
 .scr-body{padding:12px 14px;overflow-y:auto;display:flex;flex-direction:column;gap:10px}
 .scr-hint{font-size:12px;color:var(--dim)}
 .scr-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
@@ -511,7 +514,7 @@ gap:1px;background:var(--line);min-height:0;overflow:hidden}
 .topsearch-in{width:190px;padding:6px 11px;border:1px solid var(--line2);border-radius:16px;
   background:var(--panel);color:var(--ink);font-size:12px}
 .topsearch-in:focus{outline:none;border-color:var(--teal);width:220px}
-.ts-drop{position:absolute;top:36px;left:0;z-index:1000;min-width:220px;max-height:340px;overflow-y:auto;
+.ts-drop{position:absolute;top:36px;left:0;z-index:1200;min-width:220px;max-height:340px;overflow-y:auto;
   background:var(--panel);border:1px solid var(--line2);border-radius:10px;
   box-shadow:0 8px 28px rgba(0,0,0,.35);padding:4px}
 .ts-item{display:flex;justify-content:space-between;align-items:center;gap:8px;
@@ -1726,6 +1729,14 @@ var FIN_SORTS=[
   {k:"revenue_yoy",label:"매출성장"},
   {k:"debt_ratio",label:"부채비율↓"}
 ];
+function finSortRows(rows, sortKey){
+sortKey=sortKey||"revenue";
+var asc=(sortKey==="debt_ratio"||sortKey==="per"||sortKey==="pbr"); // 낮을수록 좋은 지표
+var present=[], absent=[];
+rows.forEach(function(r){ (r[sortKey]==null?absent:present).push(r); });
+present.sort(function(a,b){ return asc ? a[sortKey]-b[sortKey] : b[sortKey]-a[sortKey]; });
+return present.concat(absent);
+}
 function financePanelHTML(){
 var f=state.finRank;
 // 패널이 처음 보일 때 자동 로드
@@ -1757,7 +1768,10 @@ else {
   var sortBar=FIN_SORTS.map(function(s){
     return '<button class="fin-sbtn'+(state.finSort===s.k?" on":"")+'" data-action="fin-sort" data-k="'+s.k+'">'+s.label+'</button>';
   }).join("");
-  var rows=f.rows.map(function(r,i){
+  var baseRows=f.rows;
+  if(state.finMarket){ baseRows=baseRows.filter(function(r){ return (r.market||"").toUpperCase()===state.finMarket; }); }
+  var sortedRows=finSortRows(baseRows, state.finSort);
+  var rows=sortedRows.map(function(r,i){
     var opPos=(r.op_income!=null&&r.op_income>=0);
     var yoyPos=(r.revenue_yoy!=null&&r.revenue_yoy>=0);
     return '<tr class="fin-row" data-action="stock-detail" data-sym="'+esc(r.symbol)+'" data-name="'+esc(r.name)+'">'+
@@ -1795,7 +1809,7 @@ else {
       '<span class="fin-sep">|</span>'+
       '<button class="fin-sbtn'+(state.finPeriod!=="latest"?" on":"")+'" data-action="fin-period" data-per="annual">연간</button>'+
       '<button class="fin-sbtn'+(state.finPeriod==="latest"?" on":"")+'" data-action="fin-period" data-per="latest">최신</button>'+
-      '<span class="fin-cnt">'+(f&&f.rows?f.rows.length:0)+'개</span>'+
+      '<span class="fin-cnt">'+(rows?sortedRows.length:0)+'개</span>'+
     '</div>'+
     '<div class="fin-tablewrap"><table class="fin-table"><thead><tr>'+
       '<th>#</th><th>기업</th><th>매출</th><th class="mob-hide">영업익</th><th class="mob-hide">영업%</th><th>ROE</th><th>PER</th><th class="mob-hide">PBR</th><th class="mob-hide">매출성장</th>'+
@@ -4763,11 +4777,11 @@ else if(a==="finance"){
 }
 else if(a==="fin-close"){ state.finOpen=false; render(); }
 else if(a==="fin-min"){ state.finMin=!state.finMin; render(); }
-else if(a==="fin-sort"){ state.finSort=t.getAttribute("data-k")||"revenue"; loadFinance(); }
+else if(a==="fin-sort"){ state.finSort=t.getAttribute("data-k")||"revenue"; patchFinancePanel(); if(state.finOpen) render(); }
 else if(a==="fin-sector"){ state.finSector=t.getAttribute("data-sec")||""; loadFinance(); }
 else if(a==="fin-retry"){ state.finRank=null; loadFinance(true); }
 else if(a==="fin-scope"){ state.finScope=t.getAttribute("data-scope")||"major"; state.finRank=null; loadFinance(); }
-else if(a==="fin-market"){ state.finMarket=t.getAttribute("data-mkt")||""; loadFinance(); }
+else if(a==="fin-market"){ state.finMarket=t.getAttribute("data-mkt")||""; patchFinancePanel(); if(state.finOpen) render(); }
 else if(a==="fin-period"){ state.finPeriod=t.getAttribute("data-per")||"annual"; state.finRank=null; loadFinance(); }
 else if(a==="hotdisc"){
   state.hotOpen=true; state.hotMin=false; render();
