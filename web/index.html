@@ -459,6 +459,14 @@ gap:1px;background:var(--line);min-height:0;overflow:hidden}
 .fin-scopebar{gap:6px}
 .fin-cnt{margin-left:auto;font-size:11px;color:var(--dim)}
 .fin-sep{color:var(--line2);margin:0 2px}
+.btn-more{font-weight:600}
+.more-overlay{position:fixed;inset:0;z-index:998}
+.more-menu{position:fixed;top:52px;right:16px;z-index:999;background:var(--panel);
+  border:1px solid var(--line2);border-radius:10px;padding:6px;min-width:170px;
+  box-shadow:0 8px 28px rgba(0,0,0,.35);display:flex;flex-direction:column;gap:2px}
+.more-item{display:block;width:100%;text-align:left;padding:9px 12px;border:none;
+  background:transparent;color:var(--ink);font-size:13px;cursor:pointer;border-radius:7px}
+.more-item:hover{background:var(--panel3)}
 .chat-float{width:min(420px,92vw)}
 .chat-float-body{display:flex;flex-direction:column;height:min(560px,72vh);overflow:hidden}
 .chat-float-body .feedhead.chathead{flex:none}
@@ -1406,7 +1414,7 @@ cal: null, calY: 0, calM: 0, calFilter: {}, calAdminOpen: false, calAdminList: n
 glossaryOpen: false, glossary: null, glossQ: "", glossCat: "전체", dguideOpen: false, dguide: null,
 startOpen: false, startGuide: null, startTab: "guide",
 stock: null, stockLoading: false, live: null, newsTs: "",
-feedDisc: null, feedNews: null, feedReports: null, feedPolicy: null, feedHot: null, feedIpo: null, ipoOpen: false, ipoMin: false, ipoPos: null, policyFilter: "all", hotOpen: false, hotMin: false, hotPos: null, finOpen: false, finMin: false, finPos: null, finRank: null, finSort: "revenue", finSector: "", finSectors: null, finScope: "major", finMarket: "", chatOpen: (typeof window!=="undefined" && window.innerWidth>760), chatMin: false, chatPos: null, modal: false, reports: null, reportsLoading: false,
+feedDisc: null, feedNews: null, feedReports: null, feedPolicy: null, feedHot: null, feedIpo: null, ipoOpen: false, ipoMin: false, ipoPos: null, policyFilter: "all", hotOpen: false, hotMin: false, hotPos: null, finOpen: false, finMin: false, finPos: null, finRank: null, finSort: "revenue", finSector: "", finSectors: null, finScope: "major", finMarket: "", moreOpen: false, chatOpen: (typeof window!=="undefined" && window.innerWidth>760), chatMin: false, chatPos: null, modal: false, reports: null, reportsLoading: false,
 chat: [], chatLastId: 0, chatUser: "익명", reacts: {}, indices: null, fx: null, corpOpen: false, corpTab: "dividend", corpData: null, corpMin: false, corpPos: null, corpQuery: "", calcOpen: false, calcTab: "yield", calcVals: {}, calcMin: false, calcPos: null, calcW: 520, recsCache: {},
 notice: "", emojiOpen: false, briefing: null, briefingOpen: false, presence: {site:0,chat:0},
 mflowOpen: false, mflow: null, mflowMkt: "KOSPI",
@@ -1479,7 +1487,7 @@ var cal = d && d.weights_calibrated;
 var ms=marketStatus();
 return '<div class="top">'+
 '<div class="brand">모두의 <b>리서치 모니터</b>'+
-'<small>데이터 기반 시장 모니터링 · 투자자문·매매추천이 아니며 투자판단·책임은 본인에게 있습니다</small></div>'+
+'<small>공시·뉴스·재무를 한눈에 · 투자판단과 책임은 본인에게 있습니다</small></div>'+
 '<div class="adslot" id="adslot">'+adHTML()+'</div>'+
 '<div class="top-meta">'+
 (pub?'':'<span id="mktpill" class="pill mktpill '+ms.cls+'">'+esc(ms.label)+'</span>')+
@@ -1488,13 +1496,9 @@ return '<div class="top">'+
 (state.mode==="sample"?"샘플 데이터":(pub?"공시·뉴스":"라이브"))+'</span>'+
 '<span class="meta-divider"></span>'+
 (pub?'':'<button class="btn bell" data-action="alerts-toggle">🔔'+(state.alertUnseen>0?'<span class="bell-badge">'+(state.alertUnseen>99?'99+':state.alertUnseen)+'</span>':'')+'</button>')+
-'<button class="btn" data-action="board">🐞 게시판</button>'+
-'<button class="btn" data-action="glossary">📖 용어사전</button>'+
-'<button class="btn" data-action="dguide">📑 공시읽기</button>'+
 '<button class="btn" data-action="hotdisc">🔥 주요공시</button>'+
 '<button class="btn" data-action="chat-toggle">💬 채팅</button>'+
-'<button class="btn" data-action="calc">🧮 투자계산기</button>'+
-'<button class="btn" data-action="startguide">🚀 주식입문</button>'+
+'<button class="btn btn-more" data-action="more-menu">⋯ 더보기</button>'+
 '<span class="meta-divider"></span>'+
 (h&&h.cafe_url ? '<a class="btn cafe" href="'+esc(h.cafe_url)+'" target="_blank" rel="noopener" title="'+esc(h.cafe_name||"내 카페")+'">☕ 카페</a>' : '')+
 '</div></div>';
@@ -2259,7 +2263,7 @@ return '<div class="modal-bg" data-action="alerts-close"><div class="al-panel" d
 '</div></div>';
 }
 function mobileNavHTML(){
-var tabs=[['cal','📅','캘린더'],['disc','📋','공시'],['news','📰','뉴스'],['chat','💬','채팅']];
+var tabs=[['cal','📅','캘린더'],['disc','📋','공시'],['news','📰','뉴스'],['chat','📊','재무']];
 var cur=state.mTab||'cal';
 return '<div class="mobilenav">'+tabs.map(function(t){
 return '<button class="mnav-btn'+(cur===t[0]?' on':'')+'" data-action="mtab" data-t="'+t[0]+'">'+
@@ -3039,6 +3043,21 @@ return '<span class="emoji" data-action="emoji-pick" data-emoji="'+e+'">'+e+'</s
 }).join("")+'</div>';
 }
 var QUICK = ["📈 상승 주목","📉 조정 주의","💰 거래대금 급증","🔥 강한 수급","⚠️ 변동성 큼","🎯 관심종목","🐂 매수세","🐻 매도세","🚀 가즈아","💎 존버","🙏 떡상기원","👀 지켜보는중"];
+function moreMenuHTML(){
+if(!state.moreOpen) return '';
+var items=[
+  {a:"glossary",label:"📖 용어사전"},
+  {a:"dguide",label:"📑 공시읽기"},
+  {a:"calc",label:"🧮 투자계산기"},
+  {a:"startguide",label:"🚀 주식입문"},
+  {a:"board",label:"💬 게시판"}
+];
+var rows=items.map(function(it){
+  return '<button class="more-item" data-action="'+it.a+'">'+it.label+'</button>';
+}).join("");
+return '<div class="more-overlay" data-action="more-close"></div>'+
+  '<div class="more-menu" data-stop="1">'+rows+'</div>';
+}
 function chatFloatHTML(){
 if(!state.chatOpen) return '';
 var mini=state.chatMin?' ce-min':'';
@@ -3416,6 +3435,7 @@ corpEventsModalHTML()+
 hotDiscModalHTML()+
 financeModalHTML()+
 chatFloatHTML()+
+moreMenuHTML()+
 calcModalHTML()+
 toastHTML();
 // 열려있는 모든 모달에 드래그·리사이즈 핸들 자동 부착
@@ -4384,6 +4404,8 @@ nameTimer=setTimeout(function(){ saveChatName(v.trim()||"익명"); }, 400);
 document.addEventListener("click",function(e){
 var t=e.target.closest?e.target.closest("[data-action]"):null; if(!t) return;
 var a=t.getAttribute("data-action");
+// 더보기 메뉴가 열려있을 때 다른 동작을 누르면 메뉴를 닫는다(항목 선택 후 정리)
+if(state.moreOpen && a && a!=="more-menu"){ state.moreOpen=false; }
 // 닫기(*-close) 처리: 명시적 닫기 버튼(✕ 등 실제 버튼)은 항상 통과시킨다.
 // 배경(오버레이) 클릭으로만 닫는 경우에만, 내용(data-stop) 안 클릭을 무시한다.
 if(a && /-close$/.test(a)){
@@ -4417,6 +4439,8 @@ else if(a==="ipo"){
 }
 else if(a==="ipo-close"){ state.ipoOpen=false; render(); }
 else if(a==="ipo-min"){ state.ipoMin=!state.ipoMin; render(); }
+else if(a==="more-menu"){ state.moreOpen=!state.moreOpen; render(); }
+else if(a==="more-close"){ state.moreOpen=false; render(); }
 else if(a==="chat-toggle"){ state.chatOpen=!state.chatOpen; state.chatMin=false; render(); }
 else if(a==="chat-close"){ state.chatOpen=false; render(); }
 else if(a==="chat-min"){ state.chatMin=!state.chatMin; render(); }
