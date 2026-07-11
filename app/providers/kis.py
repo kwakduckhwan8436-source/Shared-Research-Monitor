@@ -85,7 +85,12 @@ class UrllibTransport(HttpTransport):
     def _send(self, req: urllib.request.Request) -> tuple[int, dict]:
         try:
             with urllib.request.urlopen(req, timeout=self.timeout) as r:
-                return r.status, json.loads(r.read().decode("utf-8"))
+                raw = r.read().decode("utf-8", "replace")
+                try:
+                    return r.status, json.loads(raw)
+                except (ValueError, json.JSONDecodeError):
+                    # 응답이 JSON이 아님(빈 응답·XML·에러 페이지 등) → 빈 dict로 안전 처리
+                    return r.status, {}
         except urllib.error.HTTPError as e:
             try:
                 payload = json.loads(e.read().decode("utf-8"))

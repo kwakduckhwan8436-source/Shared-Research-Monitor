@@ -357,16 +357,21 @@ class DARTProvider(DataProvider):
         result: dict[str, dict] = {}
         if not self.api_key or not corp_codes:
             return result
-        # DART 다중계정은 콤마로 여러 corp_code 허용(넉넉히 100개씩)
-        CHUNK = 100
+        # DART 다중계정은 콤마 구분이지만 대량은 불안정 → 안전하게 소량씩.
+        # 개별 회사 조회로 폴백 가능하도록 실패해도 계속 진행.
+        CHUNK = 50
         for i in range(0, len(corp_codes), CHUNK):
             chunk = corp_codes[i:i + CHUNK]
+            body = None
             try:
                 body = self._get("/fnlttMultiAcnt.json", {
                     "corp_code": ",".join(chunk),
                     "bsns_year": year, "reprt_code": REPRT_ANNUAL,
                 })
-            except ProviderError:
+            except Exception:
+                # ProviderError, JSON 파싱 오류, 네트워크 오류 등 전부 무시하고 다음 청크로
+                continue
+            if not body:
                 continue
             # corp_code별로 행을 모아서 파싱
             by_corp: dict[str, list] = {}
