@@ -364,22 +364,33 @@ class DARTProvider(DataProvider):
         chunks = [corp_codes[i:i + CHUNK] for i in range(0, len(corp_codes), CHUNK)]
 
         def _fetch_chunk(chunk):
-            """청크 하나 조회 → body 반환(실패 시 None)."""
-            try:
-                return self._get("/fnlttMultiAcnt.json", {
-                    "corp_code": ",".join(chunk),
-                    "bsns_year": year, "reprt_code": reprt_code,
-                })
-            except Exception:
-                return None
+            """청크 하나 조회 → body 반환. rate limit(020)이면 잠깐 쉬고 재시도."""
+            import time as _t
+            for attempt in range(3):   # 최대 3회 시도
+                try:
+                    return self._get("/fnlttMultiAcnt.json", {
+                        "corp_code": ",".join(chunk),
+                        "bsns_year": year, "reprt_code": reprt_code,
+                    })
+                except ProviderError as e:
+                    msg = str(e)
+                    # 요청 한도(020) 또는 일시 오류면 백오프 후 재시도
+                    if "020" in msg or "800" in msg:
+                        _t.sleep(0.6 * (attempt + 1))   # 0.6s, 1.2s 점증 대기
+                        continue
+                    return None   # 그 외 오류는 즉시 포기
+                except Exception:
+                    _t.sleep(0.4 * (attempt + 1))
+                    continue
+            return None
 
-        # 병렬 조회: 동시 실행 수를 제한(DART rate limit 회피). 청크가 적으면 순차.
+        # 병렬 조회: 동시 실행 수 제한(DART 한도 회피). 청크가 적으면 순차.
         bodies = []
         if len(chunks) <= 1:
             bodies = [_fetch_chunk(chunks[0])] if chunks else []
         else:
             from concurrent.futures import ThreadPoolExecutor
-            workers = min(8, len(chunks))   # 최대 8개 동시(안전선)
+            workers = min(4, len(chunks))   # 4개 동시(한도 회피 + 속도 균형)
             with ThreadPoolExecutor(max_workers=workers) as ex:
                 bodies = list(ex.map(_fetch_chunk, chunks))
 
