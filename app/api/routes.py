@@ -17,7 +17,7 @@ from typing import Any, Optional
 
 from app.llm import explain as explain_mod
 
-BUILD_VERSION = "2026.07.05-jsonfix1"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
+BUILD_VERSION = "2026.07.05-market1"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
 
 
 def _rsi_series(values: list, period: int = 14) -> list:
@@ -1543,16 +1543,18 @@ def register_routes(app: Any, ctx: Any) -> None:
 
     @app.get("/api/finance/ranking")
     def finance_ranking(sort: str = "revenue", sector: str = "",
-                        scope: str = "major", refresh: bool = False) -> dict:
+                        scope: str = "major", market: str = "",
+                        refresh: bool = False) -> dict:
         """주요 기업 재무 순위표 — DART 재무 + 시세(PER/PBR).
-        scope: major(대표 96개) | wide(시총 상위 ~400개, 시세 API 필요).
+        scope: major(대표 96개) | wide(시총 상위 ~400개) | all(전종목).
+        market: 빈값(전체) | KOSPI | KOSDAQ.
         시세가 아니라 재무 데이터라 공개모드에서도 합법. 하루 1회 캐싱."""
         from app.core.major_stocks import major_symbols, major_name, major_sector
         prov = getattr(ctx, "dart", None)
         if prov is None or not getattr(prov, "api_key", ""):
             return {"rows": [], "error": "DART 키가 없어 재무 데이터를 불러올 수 없습니다."}
 
-        scope = scope if scope in ("major", "wide") else "major"
+        scope = scope if scope in ("major", "wide", "all") else "major"
         now_t = _time.time()
         cached = _finance_cache.get(scope)
         if refresh or not cached or (now_t - cached.get("at", 0) > 86400):
@@ -1579,14 +1581,17 @@ def register_routes(app: Any, ctx: Any) -> None:
                         price_map = {}
                 # 종목 선정
                 sym_name = {}
-                if scope == "wide" and price_map:
+                sym_market = {}   # 종목코드 → 시장(KOSPI/KOSDAQ)
+                for s, d in price_map.items():
+                    sym_name[s] = d.get("name") or ""
+                    sym_market[s] = d.get("market") or ""
+                if scope in ("wide", "all") and price_map:
                     ranked = sorted(
                         [(s, d.get("market_cap") or 0) for s, d in price_map.items()],
                         key=lambda x: x[1], reverse=True)
-                    top = [s for s, _ in ranked[:400]]
+                    limit_n = 3000 if scope == "all" else 400
+                    top = [s for s, _ in ranked[:limit_n]]
                     syms = list(set(major_symbols()) | set(top))
-                    for s, d in price_map.items():
-                        sym_name[s] = d.get("name") or ""
                 else:
                     syms = major_symbols()
                 entry["_dbg_syms"] = len(syms)
@@ -1630,6 +1635,7 @@ def register_routes(app: Any, ctx: Any) -> None:
                         rows.append({
                             "symbol": sym, "name": nm,
                             "sector": sym_sector.get(sym, ""),
+                            "market": sym_market.get(sym, ""),
                             "revenue": fin.get("revenue"),
                             "op_income": fin.get("op_income"),
                             "net_income": fin.get("net_income"),
@@ -1655,6 +1661,10 @@ def register_routes(app: Any, ctx: Any) -> None:
         # 업종 필터
         if sector:
             rows = [r for r in rows if r.get("sector") == sector]
+        # 시장 필터(KOSPI/KOSDAQ)
+        if market:
+            mkt = market.upper()
+            rows = [r for r in rows if (r.get("market") or "").upper() == mkt]
         # 정렬. 부채비율만 오름차순(낮을수록 좋음), 나머지 내림차순. None은 항상 뒤로.
         sort_key = sort if sort in ("revenue", "op_income", "net_income", "op_margin",
                                     "net_margin", "roe", "revenue_yoy", "op_yoy",
@@ -1671,8 +1681,12 @@ def register_routes(app: Any, ctx: Any) -> None:
         present.sort(key=lambda r: r.get(sort_key), reverse=not asc)
         rows = present + absent
 
+        all_rows = cached.get("rows") or []
+        kospi_n = sum(1 for r in all_rows if (r.get("market") or "").upper() == "KOSPI")
+        kosdaq_n = sum(1 for r in all_rows if (r.get("market") or "").upper() == "KOSDAQ")
         out = {"rows": rows, "count": len(rows), "sort": sort_key, "sector": sector,
-               "scope": scope, "year": cached.get("year", ""),
+               "scope": scope, "market": market, "year": cached.get("year", ""),
+               "market_counts": {"all": len(all_rows), "KOSPI": kospi_n, "KOSDAQ": kosdaq_n},
                "diag": {"syms": cached.get("_dbg_syms"), "prices": cached.get("_dbg_prices"),
                         "corp_match": cached.get("_dbg_corpmatch"), "cmap_size": cached.get("_dbg_cmapsize")},
                "ts": ctx.clock.now().isoformat(),
