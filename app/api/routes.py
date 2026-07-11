@@ -17,7 +17,7 @@ from typing import Any, Optional
 
 from app.llm import explain as explain_mod
 
-BUILD_VERSION = "2026.07.05-ui2"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
+BUILD_VERSION = "2026.07.05-quarter1"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
 
 
 def _rsi_series(values: list, period: int = 14) -> list:
@@ -1565,8 +1565,9 @@ def register_routes(app: Any, ctx: Any) -> None:
         except Exception:
             pass
 
-    def _build_finance(scope: str) -> dict:
-        """scope별 재무 순위 계산(무거운 작업). 엔드포인트·워밍업 공용."""
+    def _build_finance(scope: str, period: str = "annual") -> dict:
+        """scope별 재무 순위 계산(무거운 작업). 엔드포인트·워밍업 공용.
+        period: annual(연간 사업보고서) | latest(최신 분기 우선, 없으면 연간 폴백)."""
         from app.core.major_stocks import major_symbols, major_name, major_sector
         prov = getattr(ctx, "dart", None)
         now_t = _time.time()
@@ -1623,12 +1624,49 @@ def register_routes(app: Any, ctx: Any) -> None:
                 entry["err"] = ("corp_code 매핑이 아직 준비되지 않았습니다"
                                 "(서버 기동 직후일 수 있음). 잠시 후 다시 시도하세요.")
                 return entry
-            yr = ctx.clock.now().year - 1
-            fin_map = prov.multi_financials(corp_codes, str(yr))
-            if len(fin_map) < len(corp_codes) * 0.3:
-                fin_map2 = prov.multi_financials(corp_codes, str(yr - 1))
-                for k, v in fin_map2.items():
-                    fin_map.setdefault(k, v)
+            now = ctx.clock.now()
+            period_label = "연간"
+            if period == "latest":
+                # 최신 분기 우선: 현재 월 기준으로 나온 최신 분기보고서를 시도
+                # 1Q(11013)~5월, 반기(11012)~8월, 3Q(11014)~11월, 사업(11011)~다음해3월
+                yr = now.year
+                m = now.month
+                # (연도, 보고서코드, 라벨) 시도 순서 — 최신부터
+                attempts = []
+                if m >= 11:
+                    attempts = [(yr, "11014", f"{yr} 3분기"), (yr, "11012", f"{yr} 반기"),
+                                (yr, "11013", f"{yr} 1분기"), (yr - 1, "11011", f"{yr-1} 연간")]
+                elif m >= 8:
+                    attempts = [(yr, "11012", f"{yr} 반기"), (yr, "11013", f"{yr} 1분기"),
+                                (yr - 1, "11011", f"{yr-1} 연간")]
+                elif m >= 5:
+                    attempts = [(yr, "11013", f"{yr} 1분기"), (yr - 1, "11011", f"{yr-1} 연간")]
+                else:
+                    attempts = [(yr - 1, "11011", f"{yr-1} 연간"), (yr - 2, "11011", f"{yr-2} 연간")]
+                fin_map = {}
+                for ay, arc, alabel in attempts:
+                    fin_map = prov.multi_financials(corp_codes, str(ay), arc)
+                    if len(fin_map) >= len(corp_codes) * 0.3:
+                        entry["year"] = str(ay)
+                        period_label = alabel
+                        break
+                if not fin_map:
+                    # 전부 실패 시 연간으로 최종 폴백
+                    yr2 = now.year - 1
+                    fin_map = prov.multi_financials(corp_codes, str(yr2))
+                    entry["year"] = str(yr2)
+                    period_label = f"{yr2} 연간"
+            else:
+                yr = now.year - 1
+                fin_map = prov.multi_financials(corp_codes, str(yr))
+                if len(fin_map) < len(corp_codes) * 0.3:
+                    fin_map2 = prov.multi_financials(corp_codes, str(yr - 1))
+                    for k, v in fin_map2.items():
+                        fin_map.setdefault(k, v)
+                    yr = yr - 1
+                entry["year"] = str(yr)
+                period_label = f"{yr} 연간"
+            entry["period_label"] = period_label
             rows = []
             for cc, fin in fin_map.items():
                 sym = code_to_sym.get(cc, "")
@@ -1657,7 +1695,6 @@ def register_routes(app: Any, ctx: Any) -> None:
                     "price_date": pinfo.get("bas_dt"), "bsns_year": fin.get("bsns_year"),
                 })
             entry["rows"] = rows
-            entry["year"] = str(yr)
         except Exception as e:
             entry["err"] = f"재무 조회 오류: {e}"
         return entry
@@ -1679,10 +1716,11 @@ def register_routes(app: Any, ctx: Any) -> None:
     @app.get("/api/finance/ranking")
     def finance_ranking(sort: str = "revenue", sector: str = "",
                         scope: str = "major", market: str = "",
-                        refresh: bool = False) -> dict:
+                        period: str = "annual", refresh: bool = False) -> dict:
         """주요 기업 재무 순위표 — DART 재무 + 시세(PER/PBR).
         scope: major(대표 96개) | wide(시총 상위 ~400개) | all(전종목).
         market: 빈값(전체) | KOSPI | KOSDAQ.
+        period: annual(연간) | latest(최신 분기 우선).
         시세가 아니라 재무 데이터라 공개모드에서도 합법. 하루 1회 캐싱."""
         from app.core.major_stocks import major_symbols, major_name, major_sector
         prov = getattr(ctx, "dart", None)
@@ -1690,13 +1728,15 @@ def register_routes(app: Any, ctx: Any) -> None:
             return {"rows": [], "error": "DART 키가 없어 재무 데이터를 불러올 수 없습니다."}
 
         scope = scope if scope in ("major", "wide", "all") else "major"
+        period = period if period in ("annual", "latest") else "annual"
+        ckey = scope + ":" + period      # 캐시키(scope+period 분리)
         now_t = _time.time()
         if not _finance_cache:
             _finance_load_disk()
-        cached = _finance_cache.get(scope)
+        cached = _finance_cache.get(ckey)
         if refresh or not cached or (now_t - cached.get("at", 0) > 86400):
-            cached = _build_finance(scope)
-            _finance_cache[scope] = cached
+            cached = _build_finance(scope, period)
+            _finance_cache[ckey] = cached
             _finance_save_disk()
 
         rows = list(cached.get("rows") or [])
@@ -1728,6 +1768,7 @@ def register_routes(app: Any, ctx: Any) -> None:
         kosdaq_n = sum(1 for r in all_rows if (r.get("market") or "").upper() == "KOSDAQ")
         out = {"rows": rows, "count": len(rows), "sort": sort_key, "sector": sector,
                "scope": scope, "market": market, "year": cached.get("year", ""),
+               "period": period, "period_label": cached.get("period_label", ""),
                "market_counts": {"all": len(all_rows), "KOSPI": kospi_n, "KOSDAQ": kosdaq_n},
                "diag": {"syms": cached.get("_dbg_syms"), "prices": cached.get("_dbg_prices"),
                         "corp_match": cached.get("_dbg_corpmatch"), "cmap_size": cached.get("_dbg_cmapsize")},

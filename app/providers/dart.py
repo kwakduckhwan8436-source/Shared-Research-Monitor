@@ -350,10 +350,12 @@ class DARTProvider(DataProvider):
             "fs_div": fs_pref, "bsns_year": year,
         }
 
-    def multi_financials(self, corp_codes: list[str], year: str) -> dict[str, dict]:
+    def multi_financials(self, corp_codes: list[str], year: str,
+                         reprt_code: str = REPRT_ANNUAL) -> dict[str, dict]:
         """다중회사 주요계정 — 여러 회사 재무를 한 번에(fnlttMultiAcnt.json).
         반환: {corp_code: {revenue, op_income, net_income, ...}}.
-        corp_codes 는 최대 ~100개씩 나눠 호출(콤마 구분)."""
+        reprt_code: 11011(사업보고서/연간) | 11013(1분기) | 11012(반기) | 11014(3분기).
+        corp_codes 는 최대 ~50개씩 나눠 호출(콤마 구분)."""
         result: dict[str, dict] = {}
         if not self.api_key or not corp_codes:
             return result
@@ -366,7 +368,7 @@ class DARTProvider(DataProvider):
             try:
                 body = self._get("/fnlttMultiAcnt.json", {
                     "corp_code": ",".join(chunk),
-                    "bsns_year": year, "reprt_code": REPRT_ANNUAL,
+                    "bsns_year": year, "reprt_code": reprt_code,
                 })
             except Exception:
                 # ProviderError, JSON 파싱 오류, 네트워크 오류 등 전부 무시하고 다음 청크로
