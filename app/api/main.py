@@ -550,6 +550,16 @@ def create_app(cfg: Optional[Config] = None):
         if getattr(ctx.config, "public_mode", False):
             print("[공개모드] 시장데이터 적재를 건너뜁니다(시작 속도 최적화). "
                   "공시·뉴스·캘린더·커뮤니티만 사용합니다.")
+            # 재무 순위(DART 재무+시세)는 무거우니 백그라운드로 미리 준비.
+            warm = getattr(ctx, "finance_warmup", None)
+            if warm:
+                import threading as _tw
+                def _warm():
+                    try:
+                        warm("wide")   # 시총 상위 400개 미리 계산(사용자 대기 없앰)
+                    except Exception as _e:
+                        print(f"[재무 워밍업] 실패(무시): {_e}")
+                _tw.Thread(target=_warm, daemon=True, name="finance-warmup").start()
             return
         if ctx.config.data_source == "mock":
             ctx.service.refresh_data(ctx.universe, ctx.all_kinds())

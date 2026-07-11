@@ -17,7 +17,7 @@ from typing import Any, Optional
 
 from app.llm import explain as explain_mod
 
-BUILD_VERSION = "2026.07.05-market1"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
+BUILD_VERSION = "2026.07.05-warmup1"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
 
 
 def _rsi_series(values: list, period: int = 14) -> list:
@@ -1540,6 +1540,141 @@ def register_routes(app: Any, ctx: Any) -> None:
         return out
 
     _finance_cache = {}   # scope별: {scope: {rows, at, year, err}}
+    _FIN_DISK = "finance_cache.json"
+
+    def _finance_load_disk():
+        """디스크에서 재무 캐시 로드(서버 재시작 대비). 하루 이내 것만 유효."""
+        try:
+            import json as _j, os as _os
+            if not _os.path.exists(_FIN_DISK):
+                return
+            with open(_FIN_DISK, encoding="utf-8") as fh:
+                data = _j.load(fh)
+            now_t = _time.time()
+            for scope, entry in (data or {}).items():
+                if isinstance(entry, dict) and (now_t - entry.get("at", 0) < 86400):
+                    _finance_cache[scope] = entry
+        except Exception:
+            pass
+
+    def _finance_save_disk():
+        try:
+            import json as _j
+            with open(_FIN_DISK, "w", encoding="utf-8") as fh:
+                _j.dump(_finance_cache, fh, ensure_ascii=False)
+        except Exception:
+            pass
+
+    def _build_finance(scope: str) -> dict:
+        """scope별 재무 순위 계산(무거운 작업). 엔드포인트·워밍업 공용."""
+        from app.core.major_stocks import major_symbols, major_name, major_sector
+        prov = getattr(ctx, "dart", None)
+        now_t = _time.time()
+        entry = {"rows": [], "at": now_t, "year": "", "err": None}
+        if prov is None or not getattr(prov, "api_key", ""):
+            entry["err"] = "DART 키가 없어 재무 데이터를 불러올 수 없습니다."
+            return entry
+        try:
+            cmap = getattr(prov, "corp_code_map", {}) or {}
+            if len(cmap) < 300:
+                try:
+                    from tools.build_dart_corpmap import build_corpmap
+                    full_map, _names = build_corpmap(prov.api_key)
+                    if full_map and len(full_map) > len(cmap):
+                        cmap = full_map
+                        prov.corp_code_map = full_map
+                except Exception:
+                    pass
+            sp = getattr(ctx, "stock_price", None)
+            sp_on = sp is not None and getattr(sp, "enabled", False)
+            price_map = {}
+            if sp_on:
+                try:
+                    price_map = sp.fetch_all_prices(ctx.clock.now())
+                except Exception:
+                    price_map = {}
+            sym_name = {}
+            sym_market = {}
+            for s, d in price_map.items():
+                sym_name[s] = d.get("name") or ""
+                sym_market[s] = d.get("market") or ""
+            if scope in ("wide", "all") and price_map:
+                ranked = sorted(
+                    [(s, d.get("market_cap") or 0) for s, d in price_map.items()],
+                    key=lambda x: x[1], reverse=True)
+                limit_n = 3000 if scope == "all" else 400
+                top = [s for s, _ in ranked[:limit_n]]
+                syms = list(set(major_symbols()) | set(top))
+            else:
+                syms = major_symbols()
+            entry["_dbg_syms"] = len(syms)
+            entry["_dbg_prices"] = len(price_map)
+            sym_sector = {s: major_sector(s) for s in major_symbols()}
+            code_to_sym = {}
+            corp_codes = []
+            for s in syms:
+                cc = cmap.get(s)
+                if cc:
+                    corp_codes.append(cc)
+                    code_to_sym[cc] = s
+            entry["_dbg_corpmatch"] = len(corp_codes)
+            entry["_dbg_cmapsize"] = len(cmap)
+            if not corp_codes:
+                entry["err"] = ("corp_code 매핑이 아직 준비되지 않았습니다"
+                                "(서버 기동 직후일 수 있음). 잠시 후 다시 시도하세요.")
+                return entry
+            yr = ctx.clock.now().year - 1
+            fin_map = prov.multi_financials(corp_codes, str(yr))
+            if len(fin_map) < len(corp_codes) * 0.3:
+                fin_map2 = prov.multi_financials(corp_codes, str(yr - 1))
+                for k, v in fin_map2.items():
+                    fin_map.setdefault(k, v)
+            rows = []
+            for cc, fin in fin_map.items():
+                sym = code_to_sym.get(cc, "")
+                if not sym:
+                    continue
+                pinfo = price_map.get(sym) or {}
+                mcap = pinfo.get("market_cap")
+                net = fin.get("net_income")
+                eq = fin.get("total_equity")
+                per = (round(mcap / net, 1) if (mcap and net and net > 0) else None)
+                pbr = (round(mcap / eq, 2) if (mcap and eq and eq > 0) else None)
+                nm = ctx.name_of(sym)
+                if not nm or nm == sym:
+                    nm = sym_name.get(sym) or major_name(sym)
+                rows.append({
+                    "symbol": sym, "name": nm,
+                    "sector": sym_sector.get(sym, ""),
+                    "market": sym_market.get(sym, ""),
+                    "revenue": fin.get("revenue"), "op_income": fin.get("op_income"),
+                    "net_income": fin.get("net_income"), "op_margin": fin.get("op_margin"),
+                    "net_margin": fin.get("net_margin"), "roe": fin.get("roe"),
+                    "debt_ratio": fin.get("debt_ratio"),
+                    "revenue_yoy": fin.get("revenue_yoy"), "op_yoy": fin.get("op_yoy"),
+                    "per": per, "pbr": pbr,
+                    "close": pinfo.get("close"), "market_cap": mcap,
+                    "price_date": pinfo.get("bas_dt"), "bsns_year": fin.get("bsns_year"),
+                })
+            entry["rows"] = rows
+            entry["year"] = str(yr)
+        except Exception as e:
+            entry["err"] = f"재무 조회 오류: {e}"
+        return entry
+
+    # 앱 컨텍스트에 워밍업 함수 노출(startup에서 호출)
+    def _finance_warmup(scope: str = "wide") -> None:
+        """서버 시작 후 백그라운드에서 재무를 미리 계산해 캐시에 저장."""
+        _finance_load_disk()
+        if _finance_cache.get(scope) and (_time.time() - _finance_cache[scope].get("at", 0) < 86400):
+            return  # 디스크에 최신 캐시 있으면 스킵
+        entry = _build_finance(scope)
+        _finance_cache[scope] = entry
+        _finance_save_disk()
+    try:
+        ctx.finance_warmup = _finance_warmup
+    except Exception:
+        pass
 
     @app.get("/api/finance/ranking")
     def finance_ranking(sort: str = "revenue", sector: str = "",
@@ -1556,106 +1691,13 @@ def register_routes(app: Any, ctx: Any) -> None:
 
         scope = scope if scope in ("major", "wide", "all") else "major"
         now_t = _time.time()
+        if not _finance_cache:
+            _finance_load_disk()
         cached = _finance_cache.get(scope)
         if refresh or not cached or (now_t - cached.get("at", 0) > 86400):
-            entry = {"rows": [], "at": now_t, "year": "", "err": None}
-            try:
-                cmap = getattr(prov, "corp_code_map", {}) or {}
-                # corp_code 맵이 부족하면(대표종목만) DART에서 전종목 맵을 받아 주입
-                if len(cmap) < 300:
-                    try:
-                        from tools.build_dart_corpmap import build_corpmap
-                        full_map, _names = build_corpmap(prov.api_key)
-                        if full_map and len(full_map) > len(cmap):
-                            cmap = full_map
-                            prov.corp_code_map = full_map   # 이후 재사용
-                    except Exception as _e:
-                        pass  # 실패해도 기존 맵으로 진행
-                sp = getattr(ctx, "stock_price", None)
-                sp_on = sp is not None and getattr(sp, "enabled", False)
-                price_map = {}
-                if sp_on:
-                    try:
-                        price_map = sp.fetch_all_prices(ctx.clock.now())
-                    except Exception:
-                        price_map = {}
-                # 종목 선정
-                sym_name = {}
-                sym_market = {}   # 종목코드 → 시장(KOSPI/KOSDAQ)
-                for s, d in price_map.items():
-                    sym_name[s] = d.get("name") or ""
-                    sym_market[s] = d.get("market") or ""
-                if scope in ("wide", "all") and price_map:
-                    ranked = sorted(
-                        [(s, d.get("market_cap") or 0) for s, d in price_map.items()],
-                        key=lambda x: x[1], reverse=True)
-                    limit_n = 3000 if scope == "all" else 400
-                    top = [s for s, _ in ranked[:limit_n]]
-                    syms = list(set(major_symbols()) | set(top))
-                else:
-                    syms = major_symbols()
-                entry["_dbg_syms"] = len(syms)
-                entry["_dbg_prices"] = len(price_map)
-                sym_sector = {s: major_sector(s) for s in major_symbols()}
-                code_to_sym = {}
-                corp_codes = []
-                for s in syms:
-                    cc = cmap.get(s)
-                    if cc:
-                        corp_codes.append(cc)
-                        code_to_sym[cc] = s
-                entry["_dbg_corpmatch"] = len(corp_codes)
-                entry["_dbg_cmapsize"] = len(cmap)
-                if not corp_codes:
-                    entry["err"] = ("corp_code 매핑이 아직 준비되지 않았습니다"
-                                    "(서버 기동 직후일 수 있음). 잠시 후 다시 시도하세요.")
-                else:
-                    yr = ctx.clock.now().year - 1
-                    fin_map = prov.multi_financials(corp_codes, str(yr))
-                    if len(fin_map) < len(corp_codes) * 0.3:
-                        fin_map2 = prov.multi_financials(corp_codes, str(yr - 1))
-                        for k, v in fin_map2.items():
-                            fin_map.setdefault(k, v)
-                    rows = []
-                    for cc, fin in fin_map.items():
-                        sym = code_to_sym.get(cc, "")
-                        if not sym:
-                            continue
-                        pinfo = price_map.get(sym) or {}
-                        mcap = pinfo.get("market_cap")
-                        net = fin.get("net_income")
-                        eq = fin.get("total_equity")
-                        per = (round(mcap / net, 1)
-                               if (mcap and net and net > 0) else None)
-                        pbr = (round(mcap / eq, 2)
-                               if (mcap and eq and eq > 0) else None)
-                        nm = ctx.name_of(sym)
-                        if not nm or nm == sym:
-                            nm = sym_name.get(sym) or major_name(sym)
-                        rows.append({
-                            "symbol": sym, "name": nm,
-                            "sector": sym_sector.get(sym, ""),
-                            "market": sym_market.get(sym, ""),
-                            "revenue": fin.get("revenue"),
-                            "op_income": fin.get("op_income"),
-                            "net_income": fin.get("net_income"),
-                            "op_margin": fin.get("op_margin"),
-                            "net_margin": fin.get("net_margin"),
-                            "roe": fin.get("roe"),
-                            "debt_ratio": fin.get("debt_ratio"),
-                            "revenue_yoy": fin.get("revenue_yoy"),
-                            "op_yoy": fin.get("op_yoy"),
-                            "per": per, "pbr": pbr,
-                            "close": pinfo.get("close"), "market_cap": mcap,
-                            "price_date": pinfo.get("bas_dt"),
-                            "bsns_year": fin.get("bsns_year"),
-                        })
-                    entry["rows"] = rows
-                    entry["year"] = str(yr)
-            except Exception as e:
-                entry["err"] = f"재무 조회 오류: {e}"
-            _finance_cache[scope] = entry
-            cached = entry
+            cached = _build_finance(scope)
+            _finance_cache[scope] = cached
+            _finance_save_disk()
 
         rows = list(cached.get("rows") or [])
         # 업종 필터
