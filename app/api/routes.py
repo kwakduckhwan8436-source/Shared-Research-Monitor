@@ -17,7 +17,7 @@ from typing import Any, Optional
 
 from app.llm import explain as explain_mod
 
-BUILD_VERSION = "2026.07.05-retry1"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
+BUILD_VERSION = "2026.07.05-search1"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
 
 
 def _rsi_series(values: list, period: int = 14) -> list:
@@ -1064,6 +1064,41 @@ def register_routes(app: Any, ctx: Any) -> None:
                 "edge": round(avg_picked - avg_all, 2),
                 "win_rate": round(winners / len(picked) * 100, 1),
                 "note": "수급 상위 종목의 사후 수익률이 베이스라인(전체 평균)보다 높으면 수급 점수에 예측력이 있다는 신호입니다. 과거 성과는 미래를 보장하지 않습니다."}
+
+    @app.get("/api/stock_search")
+    def stock_search(q: str = "", limit: int = 12) -> dict:
+        """종목명·종목코드로 검색 → 매칭 종목 목록(코드+이름).
+        재무 상세·상세뷰 진입용. 공개모드에서도 종목 목록은 제공."""
+        q = (q or "").strip()
+        if not q:
+            return {"results": [], "q": q}
+        uni = list(ctx.search_universe or ctx.universe or [])
+        ql = q.lower()
+        is_code = q.isdigit()
+        scored = []
+        for code in uni:
+            nm = ctx.name_of(code) or ""
+            nml = nm.lower()
+            score = None
+            if is_code:
+                if code == q:
+                    score = 0
+                elif code.startswith(q):
+                    score = 1
+                elif q in code:
+                    score = 2
+            else:
+                if nml == ql:
+                    score = 0
+                elif nml.startswith(ql):
+                    score = 1
+                elif ql in nml:
+                    score = 2
+            if score is not None:
+                scored.append((score, nm, code))
+        scored.sort(key=lambda x: (x[0], x[1]))
+        results = [{"symbol": c, "name": n} for _, n, c in scored[:limit]]
+        return {"results": results, "q": q, "count": len(results)}
 
     @app.get("/api/stock/{symbol}")
     def stock(symbol: str, refresh: bool = True) -> dict:
