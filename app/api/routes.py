@@ -17,7 +17,7 @@ from typing import Any, Optional
 
 from app.llm import explain as explain_mod
 
-BUILD_VERSION = "2026.07.05-finui1"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
+BUILD_VERSION = "2026.07.05-finmain1"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
 
 
 def _rsi_series(values: list, period: int = 14) -> list:
@@ -1591,6 +1591,8 @@ def register_routes(app: Any, ctx: Any) -> None:
                             "op_income": fin.get("op_income"),
                             "net_income": fin.get("net_income"),
                             "op_margin": fin.get("op_margin"),
+                            "net_margin": fin.get("net_margin"),
+                            "roe": fin.get("roe"),
                             "debt_ratio": fin.get("debt_ratio"),
                             "revenue_yoy": fin.get("revenue_yoy"),
                             "op_yoy": fin.get("op_yoy"),
@@ -1608,7 +1610,8 @@ def register_routes(app: Any, ctx: Any) -> None:
             rows = [r for r in rows if r.get("sector") == sector]
         # 정렬. 부채비율만 오름차순(낮을수록 좋음), 나머지 내림차순. None은 항상 뒤로.
         sort_key = sort if sort in ("revenue", "op_income", "net_income", "op_margin",
-                                    "revenue_yoy", "op_yoy", "debt_ratio") else "revenue"
+                                    "net_margin", "roe", "revenue_yoy", "op_yoy",
+                                    "debt_ratio") else "revenue"
         asc = (sort_key == "debt_ratio")
         def _k(r):
             v = r.get(sort_key)
