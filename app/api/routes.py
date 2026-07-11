@@ -17,7 +17,7 @@ from typing import Any, Optional
 
 from app.llm import explain as explain_mod
 
-BUILD_VERSION = "2026.07.05-fast2"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
+BUILD_VERSION = "2026.07.05-preset1"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
 
 
 def _rsi_series(values: list, period: int = 14) -> list:
@@ -1728,6 +1728,7 @@ def register_routes(app: Any, ctx: Any) -> None:
                     "per": per, "pbr": pbr,
                     "close": pinfo.get("close"), "market_cap": mcap,
                     "price_date": pinfo.get("bas_dt"), "bsns_year": fin.get("bsns_year"),
+                    "fs_div": fin.get("fs_div"),
                 })
             entry["rows"] = rows
         except Exception as e:
@@ -1820,6 +1821,46 @@ def register_routes(app: Any, ctx: Any) -> None:
         """재무 순위표 업종 목록."""
         from app.core.major_stocks import sectors
         return {"sectors": sectors()}
+
+    @app.get("/api/finance/sector_avg")
+    def finance_sector_avg(scope: str = "wide") -> dict:
+        """업종별 평균 지표(PER·PBR·ROE·영업이익률) — 종목의 업종 대비 비교용.
+        캐시된 재무 데이터에서 계산(중앙값 사용, 극단값 영향 최소)."""
+        scope = scope if scope in ("major", "wide", "all") else "wide"
+        # 가장 큰 캐시를 사용(all > wide > major 순으로 폴백)
+        rows = None
+        for sc in ("all", "wide", "major"):
+            for pr in ("annual", "latest"):
+                c = _finance_cache.get(sc + ":" + pr)
+                if c and c.get("rows"):
+                    rows = c["rows"]
+                    break
+            if rows:
+                break
+        if not rows:
+            return {"sectors": {}, "note": "재무 데이터가 아직 준비되지 않았습니다."}
+        # 업종별 지표 모으기
+        import statistics as _st
+        by_sec = {}
+        for r in rows:
+            sec = r.get("sector") or ""
+            if not sec:
+                continue
+            by_sec.setdefault(sec, {"per": [], "pbr": [], "roe": [], "op_margin": []})
+            for k in ("per", "pbr", "roe", "op_margin"):
+                v = r.get(k)
+                if v is not None:
+                    by_sec[sec][k].append(v)
+        out = {}
+        for sec, d in by_sec.items():
+            entry = {"count": 0}
+            for k in ("per", "pbr", "roe", "op_margin"):
+                vals = d[k]
+                if vals:
+                    entry[k] = round(_st.median(vals), 2)
+                    entry["count"] = max(entry["count"], len(vals))
+            out[sec] = entry
+        return {"sectors": out, "scope": scope}
 
     @app.get("/api/feed/policy")
     def feed_policy(limit: int = 30) -> dict:
