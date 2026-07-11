@@ -17,7 +17,7 @@ from typing import Any, Optional
 
 from app.llm import explain as explain_mod
 
-BUILD_VERSION = "2026.07.05-wide1"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
+BUILD_VERSION = "2026.07.05-corpmap1"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
 
 
 def _rsi_series(values: list, period: int = 14) -> list:
@@ -212,6 +212,7 @@ def register_routes(app: Any, ctx: Any) -> None:
                 "policy_news": bool(getattr(ctx, "policy_news", None)),
                 "public_data_set": bool(getattr(ctx.config, "data_go_key", "")),
                 "stock_price_set": bool(getattr(ctx.config, "stock_price_key", "")),
+                "corp_map_size": len(getattr(getattr(ctx, "dart", None), "corp_code_map", {}) or {}),
                 "fx_set": bool(getattr(ctx.config, "exim_key", "")),
                 "admin_set": bool(getattr(ctx.config, "admin_token", "")),
                 "market_holidays": all_holiday_dates(),
@@ -1558,6 +1559,16 @@ def register_routes(app: Any, ctx: Any) -> None:
             entry = {"rows": [], "at": now_t, "year": "", "err": None}
             try:
                 cmap = getattr(prov, "corp_code_map", {}) or {}
+                # corp_code 맵이 부족하면(대표종목만) DART에서 전종목 맵을 받아 주입
+                if len(cmap) < 300:
+                    try:
+                        from tools.build_dart_corpmap import build_corpmap
+                        full_map, _names = build_corpmap(prov.api_key)
+                        if full_map and len(full_map) > len(cmap):
+                            cmap = full_map
+                            prov.corp_code_map = full_map   # 이후 재사용
+                    except Exception as _e:
+                        pass  # 실패해도 기존 맵으로 진행
                 sp = getattr(ctx, "stock_price", None)
                 sp_on = sp is not None and getattr(sp, "enabled", False)
                 price_map = {}
@@ -1578,6 +1589,8 @@ def register_routes(app: Any, ctx: Any) -> None:
                         sym_name[s] = d.get("name") or ""
                 else:
                     syms = major_symbols()
+                entry["_dbg_syms"] = len(syms)
+                entry["_dbg_prices"] = len(price_map)
                 sym_sector = {s: major_sector(s) for s in major_symbols()}
                 code_to_sym = {}
                 corp_codes = []
@@ -1586,6 +1599,8 @@ def register_routes(app: Any, ctx: Any) -> None:
                     if cc:
                         corp_codes.append(cc)
                         code_to_sym[cc] = s
+                entry["_dbg_corpmatch"] = len(corp_codes)
+                entry["_dbg_cmapsize"] = len(cmap)
                 if not corp_codes:
                     entry["err"] = ("corp_code 매핑이 아직 준비되지 않았습니다"
                                     "(서버 기동 직후일 수 있음). 잠시 후 다시 시도하세요.")
@@ -1658,6 +1673,8 @@ def register_routes(app: Any, ctx: Any) -> None:
 
         out = {"rows": rows, "count": len(rows), "sort": sort_key, "sector": sector,
                "scope": scope, "year": cached.get("year", ""),
+               "diag": {"syms": cached.get("_dbg_syms"), "prices": cached.get("_dbg_prices"),
+                        "corp_match": cached.get("_dbg_corpmatch"), "cmap_size": cached.get("_dbg_cmapsize")},
                "ts": ctx.clock.now().isoformat(),
                "attribution": "금융감독원 전자공시(DART) 다중회사 주요계정 · 재무는 시세가 아님 · 투자권유 아님"}
         if not rows and cached.get("err"):
