@@ -125,6 +125,9 @@ class Config:
     # 공공데이터포털(data.go.kr) 서비스키 — 공시일정/주식발행/기업정보 등 금융 공공데이터.
     # 무료 발급. 공공누리 유형은 데이터별로 다르니 상업적 이용 시 각 데이터 약관 확인.
     data_go_key: str = os.getenv("DATA_GO_KR_KEY", "")
+    # 금융위원회 주식시세정보 API 키(data.go.kr) — 종가·시가총액(PER/PBR 계산용).
+    # 이용허락범위 제한 없음(상업 이용 가능), 무료, 전일 종가 기준.
+    stock_price_key: str = os.getenv("STOCK_PRICE_API_KEY", "").strip()
     # 한국수출입은행 환율 API 키(선택). oapi.koreaexim.go.kr 무료 발급.
     exim_key: str = os.getenv("EXIM_API_KEY", "")
 

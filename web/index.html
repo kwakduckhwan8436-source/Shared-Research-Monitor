@@ -301,10 +301,10 @@ gap:1px;background:var(--line);overflow:hidden}
 .main.dash{grid-template-columns:208px 1fr}
 @media (max-width:1400px){ .main.dash{grid-template-columns:188px 1fr} }
 /* 새 4컬럼: 스크리너 | 리포트 | 공시 | (뉴스+채팅 세로) — 종류별 비율 */
-.main.dash4{grid-template-columns:390px 1.15fr 0.95fr 0.75fr;gap:1px}
+.main.dash4{grid-template-columns:340px 1fr 0.9fr 1.15fr;gap:1px}
 .main.dash3{display:grid;grid-template-columns:1.4fr 1.05fr 0.85fr;gap:1px}
 @media (max-width:1100px){ .main.dash3{grid-template-columns:1fr 1fr;grid-auto-rows:minmax(280px,1fr)} }
-@media (max-width:1500px){ .main.dash4{grid-template-columns:350px 1.18fr 1fr 0.78fr} }
+@media (max-width:1500px){ .main.dash4{grid-template-columns:310px 1fr 0.9fr 1.1fr} }
 @media (max-width:1100px){ .main.dash4{grid-template-columns:1fr 1fr;grid-auto-rows:minmax(280px,1fr)} }
 /* ===== 모바일(폰) — 한 화면에 한 패널 + 하단 탭 ===== */
 .mobilenav{display:none}
@@ -1403,7 +1403,7 @@ cal: null, calY: 0, calM: 0, calFilter: {}, calAdminOpen: false, calAdminList: n
 glossaryOpen: false, glossary: null, glossQ: "", glossCat: "전체", dguideOpen: false, dguide: null,
 startOpen: false, startGuide: null, startTab: "guide",
 stock: null, stockLoading: false, live: null, newsTs: "",
-feedDisc: null, feedNews: null, feedReports: null, feedPolicy: null, feedHot: null, feedIpo: null, ipoOpen: false, ipoMin: false, ipoPos: null, policyFilter: "all", hotOpen: false, hotMin: false, hotPos: null, finOpen: false, finMin: false, finPos: null, finRank: null, finSort: "revenue", finSector: "", finSectors: null, chatOpen: false, chatMin: false, chatPos: null, modal: false, reports: null, reportsLoading: false,
+feedDisc: null, feedNews: null, feedReports: null, feedPolicy: null, feedHot: null, feedIpo: null, ipoOpen: false, ipoMin: false, ipoPos: null, policyFilter: "all", hotOpen: false, hotMin: false, hotPos: null, finOpen: false, finMin: false, finPos: null, finRank: null, finSort: "revenue", finSector: "", finSectors: null, chatOpen: (typeof window!=="undefined" && window.innerWidth>760), chatMin: false, chatPos: null, modal: false, reports: null, reportsLoading: false,
 chat: [], chatLastId: 0, chatUser: "익명", reacts: {}, indices: null, fx: null, corpOpen: false, corpTab: "dividend", corpData: null, corpMin: false, corpPos: null, corpQuery: "", calcOpen: false, calcTab: "yield", calcVals: {}, calcMin: false, calcPos: null, calcW: 520, recsCache: {},
 notice: "", emojiOpen: false, briefing: null, briefingOpen: false, presence: {site:0,chat:0},
 mflowOpen: false, mflow: null, mflowMkt: "KOSPI",
@@ -1489,7 +1489,6 @@ return '<div class="top">'+
 '<button class="btn" data-action="glossary">📖 용어사전</button>'+
 '<button class="btn" data-action="dguide">📑 공시읽기</button>'+
 '<button class="btn" data-action="hotdisc">🔥 주요공시</button>'+
-'<button class="btn" data-action="finance">📊 재무순위</button>'+
 '<button class="btn" data-action="chat-toggle">💬 채팅</button>'+
 '<button class="btn" data-action="calc">🧮 투자계산기</button>'+
 '<button class="btn" data-action="startguide">🚀 주식입문</button>'+
@@ -1638,12 +1637,15 @@ var p=(v*100);
 return (p>=0?'+':'')+p.toFixed(1)+'%';
 }
 function fmtPct1(v){ return v==null?'–':((v>=0?'':'')+v.toFixed(1)+'%'); }
+function fmtNum1(v){ return v==null?'–':v.toFixed(1); }
+function fmtNum2(v){ return v==null?'–':v.toFixed(2); }
 
 var FIN_SORTS=[
   {k:"revenue",label:"매출"},
-  {k:"op_income",label:"영업이익"},
   {k:"op_margin",label:"영업이익률"},
   {k:"roe",label:"ROE"},
+  {k:"per",label:"PER↓"},
+  {k:"pbr",label:"PBR↓"},
   {k:"revenue_yoy",label:"매출성장"},
   {k:"debt_ratio",label:"부채비율↓"}
 ];
@@ -1677,15 +1679,17 @@ else {
       '<td class="fin-num '+(opPos?'':'neg')+'">'+fmtWonShort(r.op_income)+'</td>'+
       '<td class="fin-num">'+fmtPct1(r.op_margin)+'</td>'+
       '<td class="fin-num">'+fmtPct1(r.roe)+'</td>'+
+      '<td class="fin-num">'+fmtNum1(r.per)+'</td>'+
+      '<td class="fin-num">'+fmtNum2(r.pbr)+'</td>'+
       '<td class="fin-num '+(yoyPos?'pos':'neg')+'">'+fmtPctYoy(r.revenue_yoy)+'</td>'+
       '</tr>';
   }).join("");
   body='<div class="fin-toolbar"><div class="fin-btns">'+sortBar+'</div>'+
       '<button class="fin-expand" data-action="finance" title="크게 보기">⛶ 크게</button></div>'+
     '<div class="fin-tablewrap"><table class="fin-table"><thead><tr>'+
-      '<th>#</th><th>기업</th><th>매출</th><th>영업익</th><th>영업%</th><th>ROE</th><th>매출성장</th>'+
+      '<th>#</th><th>기업</th><th>매출</th><th>영업익</th><th>영업%</th><th>ROE</th><th>PER</th><th>PBR</th><th>매출성장</th>'+
       '</tr></thead><tbody>'+rows+'</tbody></table></div>'+
-    '<div class="policy-attr">📊 DART · '+esc((f&&f.year)||'')+'년 · 시세아님</div>';
+    '<div class="policy-attr">📊 DART재무+시세 · '+esc((f&&f.year)||'')+'년 · 참고용</div>';
 }
 return head+'<div class="feedbody fin-panel-body">'+body+'</div>';
 }
@@ -1716,6 +1720,8 @@ else {
       '<td class="fin-num '+(netPos?'':'neg')+'">'+fmtWonShort(r.net_income)+'</td>'+
       '<td class="fin-num">'+fmtPct1(r.op_margin)+'</td>'+
       '<td class="fin-num">'+fmtPct1(r.roe)+'</td>'+
+      '<td class="fin-num">'+fmtNum1(r.per)+'</td>'+
+      '<td class="fin-num">'+fmtNum2(r.pbr)+'</td>'+
       '<td class="fin-num '+(yoyPos?'pos':'neg')+'">'+fmtPctYoy(r.revenue_yoy)+'</td>'+
       '<td class="fin-num">'+fmtPct1(r.debt_ratio)+'</td>'+
       '</tr>';
@@ -1727,7 +1733,7 @@ else {
       '<div class="fin-row-lbl">업종</div><div class="fin-btns fin-sec-wrap">'+secOpts+'</div>'+
     '</div>'+
     '<div class="fin-tablewrap"><table class="fin-table"><thead><tr>'+
-      '<th>#</th><th>기업</th><th>매출</th><th>영업이익</th><th>순이익</th><th>영업이익률</th><th>ROE</th><th>매출성장</th><th>부채비율</th>'+
+      '<th>#</th><th>기업</th><th>매출</th><th>영업이익</th><th>순이익</th><th>영업이익률</th><th>ROE</th><th>PER</th><th>PBR</th><th>매출성장</th><th>부채비율</th>'+
       '</tr></thead><tbody>'+rows+'</tbody></table></div>'+
     '<div class="policy-attr">📊 '+esc(f.attribution||"금융감독원 전자공시(DART)")+' · '+esc(f.year||'')+'년 기준</div>';
 }

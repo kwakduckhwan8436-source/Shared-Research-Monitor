@@ -17,7 +17,7 @@ from typing import Any, Optional
 
 from app.llm import explain as explain_mod
 
-BUILD_VERSION = "2026.07.05-layout2"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
+BUILD_VERSION = "2026.07.05-perpbr1"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
 
 
 def _rsi_series(values: list, period: int = 14) -> list:
@@ -211,6 +211,7 @@ def register_routes(app: Any, ctx: Any) -> None:
                                       and getattr(ctx.config, "naver_client_secret", "")),
                 "policy_news": bool(getattr(ctx, "policy_news", None)),
                 "public_data_set": bool(getattr(ctx.config, "data_go_key", "")),
+                "stock_price_set": bool(getattr(ctx.config, "stock_price_key", "")),
                 "fx_set": bool(getattr(ctx.config, "exim_key", "")),
                 "admin_set": bool(getattr(ctx.config, "admin_token", "")),
                 "market_holidays": all_holiday_dates(),
@@ -1578,11 +1579,28 @@ def register_routes(app: Any, ctx: Any) -> None:
                         fin_map2 = prov.multi_financials(corp_codes, str(yr - 1))
                         for k, v in fin_map2.items():
                             fin_map.setdefault(k, v)
+                    # 시세(종가·시가총액) 조회 → PER/PBR 계산용. 실패해도 재무는 표시.
+                    price_map = {}
+                    sp = getattr(ctx, "stock_price", None)
+                    if sp is not None and getattr(sp, "enabled", False):
+                        try:
+                            price_map = sp.fetch_all_prices(ctx.clock.now())
+                        except Exception:
+                            price_map = {}
                     rows = []
                     for cc, fin in fin_map.items():
                         sym = code_to_sym.get(cc, "")
                         if not sym:
                             continue
+                        # PER/PBR = 시가총액 ÷ 순이익 / 자본
+                        pinfo = price_map.get(sym) or {}
+                        mcap = pinfo.get("market_cap")
+                        net = fin.get("net_income")
+                        eq = fin.get("total_equity")
+                        per = (round(mcap / net, 1)
+                               if (mcap and net and net > 0) else None)
+                        pbr = (round(mcap / eq, 2)
+                               if (mcap and eq and eq > 0) else None)
                         rows.append({
                             "symbol": sym,
                             "name": ctx.name_of(sym) or major_name(sym),
@@ -1596,6 +1614,11 @@ def register_routes(app: Any, ctx: Any) -> None:
                             "debt_ratio": fin.get("debt_ratio"),
                             "revenue_yoy": fin.get("revenue_yoy"),
                             "op_yoy": fin.get("op_yoy"),
+                            "per": per,
+                            "pbr": pbr,
+                            "close": pinfo.get("close"),
+                            "market_cap": mcap,
+                            "price_date": pinfo.get("bas_dt"),
                             "bsns_year": fin.get("bsns_year"),
                         })
                     _finance_cache["rows"] = rows
@@ -1611,8 +1634,8 @@ def register_routes(app: Any, ctx: Any) -> None:
         # 정렬. 부채비율만 오름차순(낮을수록 좋음), 나머지 내림차순. None은 항상 뒤로.
         sort_key = sort if sort in ("revenue", "op_income", "net_income", "op_margin",
                                     "net_margin", "roe", "revenue_yoy", "op_yoy",
-                                    "debt_ratio") else "revenue"
-        asc = (sort_key == "debt_ratio")
+                                    "debt_ratio", "per", "pbr") else "revenue"
+        asc = (sort_key in ("debt_ratio", "per", "pbr"))
         def _k(r):
             v = r.get(sort_key)
             has = v is not None

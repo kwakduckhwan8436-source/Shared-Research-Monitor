@@ -41,6 +41,7 @@ class AppContext:
     google_news: Optional[Any] = None   # 구글 뉴스 RSS(네이버 보완)
     policy_news: Optional[Any] = None    # 정부정책 RSS(정책브리핑·부처, 공공누리)
     public_data: Optional[Any] = None    # 공공데이터포털 금융데이터(공시일정·보호예수·기업)
+    stock_price: Optional[Any] = None    # 주식시세(종가·시가총액) — PER/PBR 계산
     fx: Optional[Any] = None             # 환율(한국수출입은행)
     market: Optional[Any] = None    # 해외지수/원자재/금리 provider
     dart: Optional[Any] = None      # DART provider(전체 공시 조회용)
@@ -100,6 +101,11 @@ def build_context(cfg: Optional[Config] = None) -> AppContext:
     if cfg.data_go_key:
         from app.providers.public_data import PublicDataProvider
         public_data = PublicDataProvider(cfg.data_go_key)
+    # 주식시세(종가·시가총액) — PER/PBR 계산용. 키 있으면 활성.
+    stock_price = None
+    if getattr(cfg, "stock_price_key", ""):
+        from app.providers.stock_price import StockPriceProvider
+        stock_price = StockPriceProvider(cfg.stock_price_key)
     # 환율(한국수출입은행). 키 있으면 활성.
     fx = None
     if cfg.exim_key:
@@ -462,7 +468,8 @@ def build_context(cfg: Optional[Config] = None) -> AppContext:
                       llm, resolver, universe, realtime=realtime, quote=quote,
                       press_news=press_news, market=market, dart=dart_provider,
                       google_news=google_news, policy_news=policy_news,
-                      public_data=public_data, fx=fx, errors=ErrorCounter(),
+                      public_data=public_data, stock_price=stock_price,
+                      fx=fx, errors=ErrorCounter(),
                       search_universe=search_universe)
 
 
