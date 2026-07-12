@@ -258,21 +258,19 @@ background:linear-gradient(135deg,#141d2e,#0f1622);overflow:hidden;flex:1.4}
 .adslot a:hover{color:#fff}
 .adslot span{color:var(--ink2);font-size:13px}
 .adslot img{max-height:60px;max-width:100%;display:block;border-radius:8px}
-.ad-house{display:flex;align-items:center;gap:12px;width:100%;height:100%;padding:7px 16px;box-sizing:border-box;
+.ad-house{display:flex;align-items:center;gap:11px;width:100%;height:100%;padding:7px 18px;box-sizing:border-box;
   text-decoration:none;border-radius:9px;
-  background:linear-gradient(100deg,#ff8a3d 0%,#ff6b6b 55%,#c850c0 100%);
-  border:none;transition:transform .12s,box-shadow .12s;
-  box-shadow:0 3px 16px rgba(255,107,107,.45)}
-.ad-house:hover{transform:translateY(-1px) scale(1.01);box-shadow:0 6px 22px rgba(255,107,107,.6)}
-.ad-house-ico{flex:none;display:flex;align-items:center}
-.ad-house-main{flex:1;display:flex;flex-direction:column;line-height:1.15;min-width:0}
-.ad-house-big{font-size:20px;font-weight:800;color:#fff;letter-spacing:-.01em;
-  text-shadow:0 1px 3px rgba(0,0,0,.25);white-space:nowrap}
-.ad-house-sub{font-size:11px;font-weight:600;color:rgba(255,255,255,.92);
+  background:linear-gradient(120deg,#1e3a34,#23324a);
+  border:1px solid var(--teal-d);transition:background .15s,border-color .15s;
+  color:var(--teal)}
+.ad-house:hover{background:linear-gradient(120deg,#254740,#2a3d5a);border-color:var(--teal)}
+.ad-house-ico{flex:none;display:flex;align-items:center;color:var(--teal)}
+.ad-house-big{flex:1;font-size:18px;font-weight:800;color:#eef3fa;letter-spacing:-.01em;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ad-house-cta{flex:none;font-size:12.5px;font-weight:800;color:#c0392b;
-  background:#fff;padding:5px 14px;border-radius:14px;white-space:nowrap;
-  box-shadow:0 2px 6px rgba(0,0,0,.15)}
+.ad-house-dash{color:var(--muted);font-weight:400}
+.ad-house-lab{font-size:14px;font-weight:600;color:var(--teal)}
+.ad-house-cta{flex:none;font-size:12px;font-weight:700;color:#04211d;
+  background:var(--teal);padding:5px 13px;border-radius:13px;white-space:nowrap}
 .ad-adsense{width:100%;position:relative}
 .ad-label{position:absolute;top:-8px;left:0;font-size:8px;color:var(--muted);background:var(--bg);padding:0 3px;z-index:1}
 .ad-empty{display:flex;align-items:center;justify-content:center;width:100%}
@@ -627,6 +625,8 @@ border-radius:9px;padding:8px 13px;font-size:15px;cursor:pointer;font-weight:700
 /* 채팅 헤더 + 접속자 */
 .chathead{background:linear-gradient(135deg,#16202f,#0f1722);gap:8px}
 .cpresence{display:flex;align-items:center;gap:6px;margin-left:auto;font-size:11px;color:var(--muted);font-weight:400}
+.feedhead .cpresence{margin-left:auto;margin-right:8px}
+.feedhead .feedcount{margin-left:0}
 .cp-item{display:inline-flex;align-items:center;gap:4px;background:var(--panel);border:1px solid var(--line2);
 border-radius:20px;padding:3px 9px}
 .cp-item b{color:var(--ink);font-family:var(--mono);font-size:12px}
@@ -1795,6 +1795,7 @@ if(f===null && !state._finPanelLoading){
   loadFinance();
 }
 var head='<div class="feedhead"><span class="feedtitle">📊 주요 기업 재무 순위</span>'+
+  presenceHTML()+
   '<span class="feedcount">'+(f&&f.rows?f.rows.length:0)+'개</span></div>';
 var body;
 if(state.finLoading && (!f||!f.rows||!f.rows.length)){
@@ -4291,19 +4292,15 @@ return '<div class="ad-adsense"><span class="ad-label">광고</span>'+
 '</div>';
 }
 if(a && a.html) return a.html;     // 운영자가 ad.txt 에 넣은 광고
-// 기본 배너: 자매 사이트(부의 로드맵) — 그래픽 + 큰 글씨 강조
+// 기본 배너: 자매 사이트(부의 로드맵) — 차분한 톤 + 큰 글씨
 return '<a class="ad-house" href="https://ai-app-tech.onrender.com/" target="_blank" rel="noopener">'+
 '<span class="ad-house-ico">'+
-  '<svg viewBox="0 0 48 48" width="38" height="38" xmlns="http://www.w3.org/2000/svg">'+
-  '<circle cx="24" cy="24" r="22" fill="#ffd54a"/>'+
-  '<circle cx="24" cy="24" r="17" fill="none" stroke="#b8860b" stroke-width="2"/>'+
-  '<text x="24" y="32" font-size="22" font-weight="bold" text-anchor="middle" fill="#7a5c00" font-family="sans-serif">₩</text>'+
+  '<svg viewBox="0 0 40 40" width="30" height="30" xmlns="http://www.w3.org/2000/svg">'+
+  '<circle cx="20" cy="20" r="18" fill="none" stroke="currentColor" stroke-width="2" opacity="0.5"/>'+
+  '<text x="20" y="27" font-size="19" font-weight="bold" text-anchor="middle" fill="currentColor" font-family="sans-serif">₩</text>'+
   '</svg>'+
 '</span>'+
-'<span class="ad-house-main">'+
-  '<span class="ad-house-big">부의 로드맵</span>'+
-  '<span class="ad-house-sub">한국에서 돈 버는 118가지 · 무료 진단</span>'+
-'</span>'+
+'<span class="ad-house-big">부의 로드맵<span class="ad-house-dash"> — </span><span class="ad-house-lab">AI 재테크 연구소</span></span>'+
 '<span class="ad-house-cta">바로가기 →</span>'+
 '</a>';
 }
