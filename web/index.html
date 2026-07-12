@@ -353,8 +353,11 @@ gap:3px;padding:6px 0;cursor:pointer;color:var(--muted);min-height:48px}
 .top{flex-wrap:wrap;padding:9px 12px;gap:7px}
 .brand{font-size:16px}.brand small{display:none}
 .top-meta{gap:6px;width:100%;margin-left:0;flex-wrap:wrap}
+.top-meta .topsearch{order:-1;width:100%;flex-basis:100%}
 .top-meta .btn{font-size:12.5px;padding:7px 11px;min-height:38px}
-.adslot{display:none}
+.adslot{display:flex;order:5;width:100%;max-width:100%;min-width:0;margin:2px 0 0;height:auto;min-height:0;flex:none;padding:0;border:none;background:transparent}
+.adslot .ad-house{border-radius:8px;height:auto}
+.adslot .ad-house-img{border-radius:8px;height:auto;object-fit:contain}
 .meta-divider{display:none}
 /* 모달: 폰에서 전체화면에 가깝게 */
 .modal, .legalmodal, .adminmodal, .floatwin, .glossmodal{max-width:100% !important;width:96% !important}
@@ -398,6 +401,33 @@ gap:3px;padding:6px 0;cursor:pointer;color:var(--muted);min-height:48px}
 .gloss-cat{font-size:13px;padding:7px 14px;min-height:36px}
 .gloss-search input{font-size:15px}
 .sg-step,.sg-q{font-size:16px}.sg-a{font-size:14px;line-height:1.7}
+/* 종목 상세 뷰: 폰에서 크게 + 재무카드 1열 */
+.sd-float{width:96vw !important;left:2vw !important;right:2vw !important;top:10px !important;
+  transform:none !important;margin:0 !important;max-width:96vw !important}
+.sd-body{max-height:80vh}
+.sd-fin{grid-template-columns:1fr}
+.sd-fin-row{padding:11px 13px;font-size:13px}
+.sd-fin-row span{font-size:12px}
+.sd-fin-row b{font-size:14px}
+.sd-news-row{padding:10px 4px;font-size:13px}
+.sd-fbtn{font-size:12px;padding:5px 11px;min-height:32px}
+/* 재무 순위표: 폰에서 터치·가독성 */
+.fin-sbtn{font-size:12px;padding:6px 12px;min-height:34px}
+.fin-scopebar{gap:5px;padding:4px 0}
+.fin-table td{padding:11px 7px;font-size:12.5px}
+.fin-table thead th{padding:9px 7px;font-size:11px}
+.fin-nm b{font-size:13px}
+.fin-expand{font-size:12px;padding:6px 11px;min-height:34px}
+/* 스크리닝 모달: 폰에서 크게 */
+.scr-preset{font-size:12.5px;padding:8px 14px;min-height:38px}
+.scr-in{font-size:15px;padding:10px 11px;min-height:44px}
+.scr-apply,.scr-reset{min-height:40px}
+/* 종목 검색창: 폰에서 넉넉히 */
+.topsearch{width:100%}
+.topsearch-in{width:100% !important;font-size:15px;padding:9px 13px;min-height:40px}
+.topsearch-in:focus{width:100% !important}
+.ts-drop{width:100%;min-width:0}
+.ts-item{padding:11px 13px;font-size:14px;min-height:44px}
 }
 @media (max-width:420px){
 .cal-cell{min-height:38px}
@@ -559,7 +589,7 @@ gap:1px;background:var(--line);min-height:0;overflow:hidden}
 .ts-item:hover{background:var(--panel3)}
 .ts-item b{color:var(--ink)}
 .ts-code{font-size:11px;color:var(--dim);font-variant-numeric:tabular-nums}
-@media (max-width:760px){ .topsearch-in{width:130px} .topsearch-in:focus{width:150px} }
+
 .fin-loading{display:flex;flex-direction:column;align-items:center;justify-content:center;
   gap:12px;padding:30px 16px;text-align:center;color:var(--dim);font-size:12px}
 .fin-load-sub{font-size:11px;color:var(--line2)}
