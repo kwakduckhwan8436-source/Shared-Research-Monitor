@@ -258,16 +258,15 @@ background:linear-gradient(135deg,#141d2e,#0f1622);overflow:hidden;flex:1.4}
 .adslot a:hover{color:#fff}
 .adslot span{color:var(--ink2);font-size:13px}
 .adslot img{max-height:60px;max-width:100%;display:block;border-radius:8px}
-.ad-house{display:flex;align-items:center;gap:10px;width:100%;padding:8px 14px;
-  text-decoration:none;border-radius:8px;
-  background:linear-gradient(135deg,rgba(45,212,191,.14),rgba(45,212,191,.04));
-  border:1px solid rgba(45,212,191,.3);transition:background .15s}
-.ad-house:hover{background:linear-gradient(135deg,rgba(45,212,191,.24),rgba(45,212,191,.08))}
-.ad-house-badge{flex:none;font-size:9px;font-weight:700;padding:2px 7px;border-radius:8px;
-  background:var(--teal);color:#04211d;letter-spacing:.02em}
-.ad-house-txt{flex:1;font-size:12.5px;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ad-house-txt b{color:var(--ink)}
-.ad-house-cta{flex:none;font-size:11px;font-weight:600;color:var(--teal)}
+.ad-house{display:flex;align-items:center;justify-content:center;gap:14px;width:100%;padding:8px 18px;
+  text-decoration:none;border-radius:10px;
+  background:linear-gradient(135deg,#41c7b0,#2a9d8a);
+  border:1px solid rgba(65,199,176,.5);transition:transform .12s,box-shadow .12s;
+  box-shadow:0 2px 12px rgba(65,199,176,.25)}
+.ad-house:hover{transform:translateY(-1px);box-shadow:0 4px 18px rgba(65,199,176,.4)}
+.ad-house-big{font-size:19px;font-weight:800;color:#04211d;letter-spacing:-.01em;white-space:nowrap}
+.ad-house-cta{flex:none;font-size:12px;font-weight:700;color:#04211d;background:rgba(255,255,255,.35);
+  padding:3px 11px;border-radius:12px;white-space:nowrap}
 .ad-adsense{width:100%;position:relative}
 .ad-label{position:absolute;top:-8px;left:0;font-size:8px;color:var(--muted);background:var(--bg);padding:0 3px;z-index:1}
 .ad-empty{display:flex;align-items:center;justify-content:center;width:100%}
@@ -302,7 +301,8 @@ border:1px solid var(--line);border-radius:8px;padding:6px 11px;font-size:12px;c
 .dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green)}
 .dot.warn{background:var(--amber);box-shadow:0 0 8px var(--amber)}
 .btn{display:inline-flex;align-items:center;gap:5px;background:var(--panel2);border:1px solid var(--line2);color:var(--ink2);
-border-radius:8px;padding:7px 12px;font-size:12px;font-weight:500;font-family:var(--sans);cursor:pointer;white-space:nowrap;transition:background .12s,border-color .12s,color .12s}
+border-radius:8px;padding:7px 12px;font-size:12px;font-weight:500;font-family:var(--sans);cursor:pointer;white-space:nowrap;transition:background .12s,border-color .12s,color .12s,transform .06s}
+.btn:active{transform:scale(.96)}
 .btn:hover{background:var(--panel3);border-color:var(--teal);color:var(--ink)}
 body.light .btn:hover{background:#e3e9f2}
 /* ---------- main grid ---------- */
@@ -443,7 +443,9 @@ gap:1px;background:var(--line);min-height:0;overflow:hidden}
 .fin-toolbar{display:flex;align-items:center;gap:8px;padding:7px 10px;border-bottom:1px solid var(--line);background:var(--panel2)}
 .fin-row-lbl{font-size:11px;color:var(--dim);flex:none;width:34px}
 .fin-btns{display:flex;flex-wrap:wrap;gap:5px}
-.fin-sbtn{font-size:11px;padding:3px 9px;border-radius:11px;border:1px solid var(--line2);background:var(--panel3);color:var(--ink2);cursor:pointer;white-space:nowrap}
+.fin-sbtn{font-size:11px;padding:3px 9px;border-radius:11px;border:1px solid var(--line2);background:var(--panel3);color:var(--ink2);cursor:pointer;white-space:nowrap;transition:background .1s,color .1s,border-color .1s,transform .06s}
+.fin-sbtn:hover{border-color:var(--teal);color:var(--ink)}
+.fin-sbtn:active{transform:scale(.94)}
 .fin-sbtn.on{background:var(--teal);color:#04211d;border-color:var(--teal);font-weight:700}
 .fin-sec-wrap{max-height:56px;overflow-y:auto}
 .fin-tablewrap{overflow:auto;flex:1;min-height:0}
@@ -498,8 +500,9 @@ gap:1px;background:var(--line);min-height:0;overflow:hidden}
 .more-item{display:block;width:100%;text-align:left;padding:9px 12px;border:none;
   background:transparent;color:var(--ink);font-size:13px;cursor:pointer;border-radius:7px}
 .more-item:hover{background:var(--panel3)}
-.fin-row{cursor:pointer}
+.fin-row{cursor:pointer;transition:background .1s}
 .fin-row:hover{background:var(--panel3)}
+.fin-row:active{background:var(--teal-d)}
 .sd-float{width:min(460px,94vw)}
 .sd-body{display:flex;flex-direction:column;max-height:min(640px,78vh);overflow-y:auto;padding:10px 12px;gap:4px}
 .sd-sec-t{font-size:12px;font-weight:700;color:var(--teal);margin:8px 0 4px}
@@ -1606,8 +1609,8 @@ return '<div class="top">'+
 (state.mode==="sample"?"샘플 데이터":(pub?"공시·뉴스":"라이브"))+'</span>'+
 '<span class="meta-divider"></span>'+
 (pub?'':'<button class="btn bell" data-action="alerts-toggle">🔔'+(state.alertUnseen>0?'<span class="bell-badge">'+(state.alertUnseen>99?'99+':state.alertUnseen)+'</span>':'')+'</button>')+
-'<button class="btn" data-action="hotdisc">🔥 주요공시</button>'+
 '<div class="topsearch"><input class="topsearch-in" id="topsearch" type="text" placeholder="종목 검색 (예: 삼성전자)" autocomplete="off" value="'+esc(state.searchQ||"")+'">'+searchResultsHTML()+'</div>'+
+'<button class="btn" data-action="hotdisc">🔥 주요공시</button>'+
 '<button class="btn" data-action="chat-toggle">💬 채팅</button>'+
 '<button class="btn btn-more" data-action="more-menu">⋯ 더보기</button>'+
 '<span class="meta-divider"></span>'+
@@ -1852,7 +1855,7 @@ else {
     '<div class="fin-tablewrap"><table class="fin-table"><thead><tr>'+
       '<th>#</th><th>기업</th><th>매출</th><th class="mob-hide">영업익</th><th class="mob-hide">영업%</th><th>ROE</th><th>PER</th><th class="mob-hide">PBR</th><th class="mob-hide">매출성장</th>'+
       '</tr></thead><tbody>'+rows+'</tbody></table></div>'+
-    '<div class="policy-attr">📊 DART재무(연결우선)+시세 · '+esc((f&&f.period_label)||((f&&f.year)||'')+'년')+' · 종목 클릭 시 공시·뉴스 · 참고용</div>'+partialMsg;
+    '<div class="policy-attr">📊 DART재무(연결·전체자본 기준)+시세 · '+esc((f&&f.period_label)||((f&&f.year)||'')+'년')+' · 종목 클릭 시 공시·뉴스 · 참고용</div>'+partialMsg;
 }
 return head+'<div class="feedbody fin-panel-body">'+body+'</div>';
 }
@@ -4160,7 +4163,14 @@ getJSON(url).then(function(j){ state.finLoading=false; state.finRank=j; patchFin
 }
 function patchFinancePanel(){
 var el=document.getElementById("panel-finance");
-if(el){ el.innerHTML=financePanelHTML(); }
+if(el){
+  // 표 스크롤 위치 보존(정렬·필터 시 튀지 않게)
+  var tw=el.querySelector(".fin-tablewrap");
+  var st=tw?tw.scrollTop:0;
+  el.innerHTML=financePanelHTML();
+  var tw2=el.querySelector(".fin-tablewrap");
+  if(tw2 && st) tw2.scrollTop=st;
+}
 }
 function pollReports(){
 if(state.mode==="sample") return;
@@ -4275,10 +4285,9 @@ return '<div class="ad-adsense"><span class="ad-label">광고</span>'+
 '</div>';
 }
 if(a && a.html) return a.html;     // 운영자가 ad.txt 에 넣은 광고
-// 기본 배너: 자매 사이트(부의 로드맵) 링크
+// 기본 배너: 자매 사이트(부의 로드맵) 링크 — 크게 강조
 return '<a class="ad-house" href="https://ai-app-tech.onrender.com/" target="_blank" rel="noopener">'+
-'<span class="ad-house-badge">AI 재테크 연구소</span>'+
-'<span class="ad-house-txt"><b>💰 부의 로드맵</b> — 한국에서 돈 버는 118가지 완전판</span>'+
+'<span class="ad-house-big">💰 부의 로드맵</span>'+
 '<span class="ad-house-cta">바로가기 →</span>'+
 '</a>';
 }

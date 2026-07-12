@@ -421,9 +421,13 @@ class DARTProvider(DataProvider):
                 fs_pref = "CFS" if any(r.get("fs_div") == "CFS" for r in all_rows) else "OFS"
                 rows = [r for r in all_rows if r.get("fs_div") == fs_pref] or all_rows
                 IS = ("IS", "CIS"); BS = ("BS",)
-                rev = _pick(rows, IS, lambda n: n in ("매출액", "수익(매출액)", "영업수익"))
-                op = _pick(rows, IS, lambda n: n.startswith("영업이익"))
-                net = _pick(rows, IS, lambda n: n.startswith("당기순이익"))
+                rev = _pick(rows, IS, lambda n: n in ("매출액", "수익(매출액)", "영업수익", "매출"))
+                op = _pick(rows, IS, lambda n: n in ("영업이익", "영업이익(손실)"))
+                # 당기순이익: '당기순이익' 또는 '당기순이익(손실)' 정확 매칭 우선
+                # (지배기업소유주지분/비지배지분 세부항목 혼동 방지 — 전체 순이익 사용)
+                net = _pick(rows, IS, lambda n: n in ("당기순이익", "당기순이익(손실)"))
+                if net is None:
+                    net = _pick(rows, IS, lambda n: n.startswith("당기순이익"))
                 liab = _pick(rows, BS, lambda n: n == "부채총계")
                 equity = _pick(rows, BS, lambda n: n == "자본총계")
                 revenue = _amt(rev.get("thstrm_amount")) if rev else None
