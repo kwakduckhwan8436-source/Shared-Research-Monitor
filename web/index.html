@@ -252,21 +252,27 @@ background:linear-gradient(180deg,#161d27,#121821);border-bottom:1px solid var(-
 border-radius:18px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer;margin-left:14px;white-space:nowrap}
 .themebtn:hover{border-color:var(--teal);color:var(--ink)}
 .adslot{display:flex;align-items:center;justify-content:center;min-width:260px;max-width:640px;
-min-height:64px;margin:0 18px;padding:6px 16px;border:1px solid var(--line2);border-radius:12px;
+min-height:64px;margin:0 18px;padding:4px;border:1px solid var(--line2);border-radius:12px;
 background:linear-gradient(135deg,#141d2e,#0f1622);overflow:hidden;flex:1.4}
 .adslot a{color:var(--ink2);font-size:13px;text-decoration:none;display:flex;align-items:center;gap:8px}
 .adslot a:hover{color:#fff}
 .adslot span{color:var(--ink2);font-size:13px}
 .adslot img{max-height:60px;max-width:100%;display:block;border-radius:8px}
-.ad-house{display:flex;align-items:center;justify-content:center;gap:14px;width:100%;padding:8px 18px;
-  text-decoration:none;border-radius:10px;
-  background:linear-gradient(135deg,#41c7b0,#2a9d8a);
-  border:1px solid rgba(65,199,176,.5);transition:transform .12s,box-shadow .12s;
-  box-shadow:0 2px 12px rgba(65,199,176,.25)}
-.ad-house:hover{transform:translateY(-1px);box-shadow:0 4px 18px rgba(65,199,176,.4)}
-.ad-house-big{font-size:19px;font-weight:800;color:#04211d;letter-spacing:-.01em;white-space:nowrap}
-.ad-house-cta{flex:none;font-size:12px;font-weight:700;color:#04211d;background:rgba(255,255,255,.35);
-  padding:3px 11px;border-radius:12px;white-space:nowrap}
+.ad-house{display:flex;align-items:center;gap:12px;width:100%;height:100%;padding:7px 16px;box-sizing:border-box;
+  text-decoration:none;border-radius:9px;
+  background:linear-gradient(100deg,#ff8a3d 0%,#ff6b6b 55%,#c850c0 100%);
+  border:none;transition:transform .12s,box-shadow .12s;
+  box-shadow:0 3px 16px rgba(255,107,107,.45)}
+.ad-house:hover{transform:translateY(-1px) scale(1.01);box-shadow:0 6px 22px rgba(255,107,107,.6)}
+.ad-house-ico{flex:none;display:flex;align-items:center}
+.ad-house-main{flex:1;display:flex;flex-direction:column;line-height:1.15;min-width:0}
+.ad-house-big{font-size:20px;font-weight:800;color:#fff;letter-spacing:-.01em;
+  text-shadow:0 1px 3px rgba(0,0,0,.25);white-space:nowrap}
+.ad-house-sub{font-size:11px;font-weight:600;color:rgba(255,255,255,.92);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ad-house-cta{flex:none;font-size:12.5px;font-weight:800;color:#c0392b;
+  background:#fff;padding:5px 14px;border-radius:14px;white-space:nowrap;
+  box-shadow:0 2px 6px rgba(0,0,0,.15)}
 .ad-adsense{width:100%;position:relative}
 .ad-label{position:absolute;top:-8px;left:0;font-size:8px;color:var(--muted);background:var(--bg);padding:0 3px;z-index:1}
 .ad-empty{display:flex;align-items:center;justify-content:center;width:100%}
@@ -1603,13 +1609,13 @@ return '<div class="top">'+
 '<small>공시·뉴스·재무를 한눈에 · 투자판단과 책임은 본인에게 있습니다</small></div>'+
 '<div class="adslot" id="adslot">'+adHTML()+'</div>'+
 '<div class="top-meta">'+
+'<div class="topsearch"><input class="topsearch-in" id="topsearch" type="text" placeholder="🔍 종목 검색 (예: 삼성전자)" autocomplete="off" value="'+esc(state.searchQ||"")+'">'+searchResultsHTML()+'</div>'+
 (pub?'':'<span id="mktpill" class="pill mktpill '+ms.cls+'">'+esc(ms.label)+'</span>')+
 (pub?'':regimePillHTML())+
 '<span class="pill"><span class="dot'+(state.mode==="sample"?" warn":"")+'"></span>'+
 (state.mode==="sample"?"샘플 데이터":(pub?"공시·뉴스":"라이브"))+'</span>'+
 '<span class="meta-divider"></span>'+
 (pub?'':'<button class="btn bell" data-action="alerts-toggle">🔔'+(state.alertUnseen>0?'<span class="bell-badge">'+(state.alertUnseen>99?'99+':state.alertUnseen)+'</span>':'')+'</button>')+
-'<div class="topsearch"><input class="topsearch-in" id="topsearch" type="text" placeholder="종목 검색 (예: 삼성전자)" autocomplete="off" value="'+esc(state.searchQ||"")+'">'+searchResultsHTML()+'</div>'+
 '<button class="btn" data-action="hotdisc">🔥 주요공시</button>'+
 '<button class="btn" data-action="chat-toggle">💬 채팅</button>'+
 '<button class="btn btn-more" data-action="more-menu">⋯ 더보기</button>'+
@@ -4285,9 +4291,19 @@ return '<div class="ad-adsense"><span class="ad-label">광고</span>'+
 '</div>';
 }
 if(a && a.html) return a.html;     // 운영자가 ad.txt 에 넣은 광고
-// 기본 배너: 자매 사이트(부의 로드맵) 링크 — 크게 강조
+// 기본 배너: 자매 사이트(부의 로드맵) — 그래픽 + 큰 글씨 강조
 return '<a class="ad-house" href="https://ai-app-tech.onrender.com/" target="_blank" rel="noopener">'+
-'<span class="ad-house-big">💰 부의 로드맵</span>'+
+'<span class="ad-house-ico">'+
+  '<svg viewBox="0 0 48 48" width="38" height="38" xmlns="http://www.w3.org/2000/svg">'+
+  '<circle cx="24" cy="24" r="22" fill="#ffd54a"/>'+
+  '<circle cx="24" cy="24" r="17" fill="none" stroke="#b8860b" stroke-width="2"/>'+
+  '<text x="24" y="32" font-size="22" font-weight="bold" text-anchor="middle" fill="#7a5c00" font-family="sans-serif">₩</text>'+
+  '</svg>'+
+'</span>'+
+'<span class="ad-house-main">'+
+  '<span class="ad-house-big">부의 로드맵</span>'+
+  '<span class="ad-house-sub">한국에서 돈 버는 118가지 · 무료 진단</span>'+
+'</span>'+
 '<span class="ad-house-cta">바로가기 →</span>'+
 '</a>';
 }
