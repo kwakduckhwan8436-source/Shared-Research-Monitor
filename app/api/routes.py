@@ -17,7 +17,7 @@ from typing import Any, Optional
 
 from app.llm import explain as explain_mod
 
-BUILD_VERSION = "2026.07.05-stable1"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
+BUILD_VERSION = "2026.07.05-refine1"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
 
 
 def _rsi_series(values: list, period: int = 14) -> list:
@@ -1133,8 +1133,14 @@ def register_routes(app: Any, ctx: Any) -> None:
             out["price"] = price
         n = g(symbol, Kind.NEWS.value)
         disclosures = (n.payload.get("items") if n else []) or []
+        from app.providers.dart import classify_disclosure
         for it in disclosures:
             it.setdefault("source", "공시")
+            # 공시 종류 분류(유상증자·배당·실적·수주 등) → 필터용
+            cls = classify_disclosure(it.get("title") or it.get("summary") or "")
+            if cls:
+                it["disc_type"] = cls["type"]
+                it["disc_icon"] = cls["icon"]
         # 실시간 언론 기사(네이버+구글) 병합
         press = []
         if _press_on():
@@ -1608,6 +1614,7 @@ def register_routes(app: Any, ctx: Any) -> None:
         from app.core.major_stocks import major_symbols, major_name, major_sector
         prov = getattr(ctx, "dart", None)
         now_t = _time.time()
+        _build_t0 = _time.time()   # 소요 시간 측정
         entry = {"rows": [], "at": now_t, "year": "", "err": None}
         if prov is None or not getattr(prov, "api_key", ""):
             entry["err"] = "DART 키가 없어 재무 데이터를 불러올 수 없습니다."
@@ -1741,8 +1748,14 @@ def register_routes(app: Any, ctx: Any) -> None:
                     "fs_div": fin.get("fs_div"),
                 })
             entry["rows"] = rows
+            # 성능 통계: 소요 시간 + DART 청크 성공/실패
+            entry["elapsed_sec"] = round(_time.time() - _build_t0, 1)
+            st = getattr(prov, "last_stats", None)
+            if st:
+                entry["chunk_stats"] = dict(st)
         except Exception as e:
             entry["err"] = f"재무 조회 오류: {e}"
+            entry["elapsed_sec"] = round(_time.time() - _build_t0, 1)
         return entry
 
     # 앱 컨텍스트에 워밍업 함수 노출(startup에서 호출)
@@ -1823,7 +1836,8 @@ def register_routes(app: Any, ctx: Any) -> None:
                "period": period, "period_label": cached.get("period_label", ""),
                "market_counts": {"all": len(all_rows), "KOSPI": kospi_n, "KOSDAQ": kosdaq_n},
                "diag": {"syms": cached.get("_dbg_syms"), "prices": cached.get("_dbg_prices"),
-                        "corp_match": cached.get("_dbg_corpmatch"), "cmap_size": cached.get("_dbg_cmapsize")},
+                        "corp_match": cached.get("_dbg_corpmatch"), "cmap_size": cached.get("_dbg_cmapsize"),
+                        "elapsed_sec": cached.get("elapsed_sec"), "chunk_stats": cached.get("chunk_stats")},
                "ts": ctx.clock.now().isoformat(),
                "attribution": "금융감독원 전자공시(DART) 다중회사 주요계정 · 재무는 시세가 아님 · 투자권유 아님"}
         if not rows and cached.get("err"):
@@ -1831,6 +1845,33 @@ def register_routes(app: Any, ctx: Any) -> None:
         elif not rows:
             out["note"] = "재무 데이터가 아직 없습니다(잠시 후 다시 시도)."
         return out
+
+    @app.get("/api/finance/perf")
+    def finance_perf() -> dict:
+        """재무 로딩 성능 모니터링 — 각 캐시의 소요 시간·청크 성공률·종목 수.
+        청크 100개가 안정적인지 관찰용(fail이 많으면 청크를 줄여야 함)."""
+        out = {}
+        for key, c in _finance_cache.items():
+            if not isinstance(c, dict):
+                continue
+            cs = c.get("chunk_stats") or {}
+            total = (cs.get("ok", 0) + cs.get("fail", 0)) or 1
+            out[key] = {
+                "rows": len(c.get("rows") or []),
+                "elapsed_sec": c.get("elapsed_sec"),
+                "chunks": cs.get("chunks"),
+                "ok": cs.get("ok"), "fail": cs.get("fail"),
+                "retries": cs.get("retries"),
+                "success_rate": round(cs.get("ok", 0) / total * 100, 1),
+                "age_min": round((_time.time() - c.get("at", 0)) / 60, 1),
+                "err": c.get("err"),
+            }
+        # 현재 청크/병렬 설정도 함께 표기
+        prov = getattr(ctx, "dart", None)
+        return {"builds": out,
+                "config": {"chunk_size": 100, "workers": 5, "retries": 3},
+                "price_cache_age_min": round((_time.time() - _price_cache.get("at", 0)) / 60, 1) if _price_cache.get("at") else None,
+                "hint": "success_rate가 낮거나(<90%) fail이 많으면 청크 크기를 줄이세요."}
 
     @app.get("/api/finance/sectors")
     def finance_sectors() -> dict:

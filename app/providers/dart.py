@@ -365,15 +365,21 @@ class DARTProvider(DataProvider):
         CHUNK = 100
         chunks = [corp_codes[i:i + CHUNK] for i in range(0, len(corp_codes), CHUNK)]
 
+        # 성능 통계(마지막 호출) — 모니터링용
+        self.last_stats = {"chunks": len(chunks), "ok": 0, "fail": 0, "retries": 0}
+
         def _fetch_chunk(chunk):
             """청크 하나 조회 → body 반환. rate limit(020)이면 잠깐 쉬고 재시도."""
             import time as _t
             for attempt in range(3):   # 최대 3회 시도
                 try:
-                    return self._get("/fnlttMultiAcnt.json", {
+                    body = self._get("/fnlttMultiAcnt.json", {
                         "corp_code": ",".join(chunk),
                         "bsns_year": year, "reprt_code": reprt_code,
                     })
+                    if attempt > 0:
+                        self.last_stats["retries"] += attempt
+                    return body
                 except ProviderError as e:
                     msg = str(e)
                     # 요청 한도(020) 또는 일시 오류면 백오프 후 재시도
@@ -395,6 +401,12 @@ class DARTProvider(DataProvider):
             workers = min(5, len(chunks))   # 5개 동시(청크 100개라 총 요청 적음 + 재시도로 누락 방지)
             with ThreadPoolExecutor(max_workers=workers) as ex:
                 bodies = list(ex.map(_fetch_chunk, chunks))
+        # 청크 성공/실패 집계
+        for b in bodies:
+            if b:
+                self.last_stats["ok"] += 1
+            else:
+                self.last_stats["fail"] += 1
 
         for body in bodies:
             if not body:
