@@ -39,6 +39,32 @@ body.light{
 }
 body.light .top{background:linear-gradient(180deg,#f7f9fc,#e7ebf3)}
 body.light .adslot{background:linear-gradient(135deg,#eef2f8,#e3e9f2)}
+/* 라이트 모드: 새 요소 대응 */
+body.light .fin-table tbody tr:nth-child(even){background:rgba(0,0,0,.012)}
+body.light .vs-a{background:#13917d;color:#fff}
+body.light .vs-b{background:rgba(19,145,125,.16);color:#0d6b5c}
+body.light .fin-hero{background:linear-gradient(180deg,rgba(19,145,125,.10),rgba(19,145,125,.02));
+  border-bottom-color:rgba(19,145,125,.22)}
+body.light .fin-pbtn.on{background:#13917d;color:#fff;box-shadow:0 2px 10px rgba(19,145,125,.28)}
+body.light .fin-pbtn-fav.on{background:#bd8019;color:#fff}
+body.light .fin-segbtn.on{background:#13917d;color:#fff}
+body.light .fin-iconbtn:hover{background:#13917d;color:#fff}
+body.light .fpi-share:hover{background:#13917d;color:#fff}
+body.light .ipo-st-up{background:#bd8019;color:#fff}
+body.light .ipo-st-open{background:#13917d;color:#fff}
+body.light .ipo-item.ipo-open{background:rgba(19,145,125,.06)}
+body.light .ipo-uw-lead{background:rgba(19,145,125,.14);color:#0d6b5c}
+body.light .ipo-fbtn.on{background:#13917d;color:#fff}
+body.light .ad-house{background:linear-gradient(120deg,#e8f4f1,#e4eaf3);border-color:#a3ddd2}
+body.light .scr-preset:hover{background:#13917d;color:#fff}
+body.light .scr-apply{background:#13917d;color:#fff;border-color:#13917d}
+body.light .fin-retry:hover{background:#13917d;color:#fff}
+body.light .wb-close:hover{background:#13917d;color:#fff}
+body.light .fpi-btn:hover{background:#bd8019;color:#fff}
+body.light .cal-dot.ipo{background:#13917d}
+body.light .cal-ev.ipo{border-left-color:#13917d;background:rgba(19,145,125,.05)}
+body.light .cal-fchip.ipo{border-left-color:#13917d}
+body.light .th-help:hover{background:#13917d;color:#fff}
 body.light .chatbody2{background:radial-gradient(120% 80% at 50% 0,#e6ebf4 0,var(--bg) 70%)}
 body.light .floatwin{background:linear-gradient(160deg,#f7f9fc,#e9edf4)}
 body.light .osc-verdict{background:linear-gradient(135deg,#eef3fa,#e2e8f2)}
@@ -430,9 +456,14 @@ gap:3px;padding:6px 0;cursor:pointer;color:var(--muted);min-height:48px}
 .fin-preset-info{padding:11px 12px}
 .fpi-help{font-size:12.5px}
 .fpi-btn{font-size:11px;padding:5px 11px;min-height:30px}
-.fin-table td{padding:11px 7px;font-size:12.5px}
-.fin-table thead th{padding:9px 7px;font-size:11px}
-.fin-nm b{font-size:13px}
+/* 재무표: 종목명이 넓게 보이도록 */
+.fin-table .fin-nm{min-width:120px;width:99%;white-space:normal;padding-left:10px}
+.fin-table .fin-nm b{font-size:13.5px;line-height:1.25;display:block;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px}
+.fin-sec{font-size:9.5px}
+.fin-table .fin-vs{width:42px}
+.fin-table td{padding:11px 4px;font-size:12.5px}
+.fin-table thead th{padding:9px 4px;font-size:10.5px}
 /* 스크리닝 모달: 폰에서 크게 */
 .scr-preset{font-size:12.5px;padding:8px 14px;min-height:38px}
 .scr-in{font-size:15px;padding:10px 11px;min-height:44px}
@@ -560,6 +591,50 @@ gap:1px;background:var(--line);min-height:0;overflow:hidden}
 .vs-c{background:var(--panel3);color:var(--ink2)}
 .vs-d{background:transparent;color:var(--dim)}
 .vs-na{color:var(--line2);font-size:11px}
+/* 점수 도움말 버튼 */
+.th-vs{white-space:nowrap}
+.th-help{margin-left:3px;width:14px;height:14px;border-radius:50%;border:1px solid var(--line2);
+  background:var(--panel3);color:var(--muted);font-size:9px;font-weight:700;cursor:pointer;
+  padding:0;line-height:1;vertical-align:middle}
+.th-help:hover{background:var(--teal);color:#04211d;border-color:var(--teal)}
+/* 점수 설명 모달 */
+.vsh-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:1100;
+  width:min(560px,94vw);max-height:88vh;display:flex;flex-direction:column;
+  box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.vsh-body{padding:14px 16px;overflow-y:auto;font-size:13px;line-height:1.6;color:var(--ink2)}
+.vsh-lead{margin:0 0 12px;font-size:13.5px}
+.vsh-lead b{color:var(--ink)}
+.vsh-sec{font-size:12.5px;font-weight:800;color:var(--teal);margin:14px 0 7px}
+.vsh-sec.vsh-warn{color:var(--amber)}
+.vsh-items{display:flex;flex-direction:column;gap:5px}
+.vsh-item{display:flex;gap:10px;align-items:baseline;font-size:12.5px}
+.vsh-k{flex:none;width:74px;font-weight:700;color:var(--ink)}
+.vsh-v{flex:1;color:var(--ink2)}
+.vsh-minus .vsh-k{color:var(--red)}
+.vsh-legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--ink2)}
+.vsh-legend span{display:inline-flex;align-items:center;gap:5px}
+.vsh-limits{margin:0;padding-left:18px;font-size:12.5px;color:var(--ink2);line-height:1.7}
+.vsh-limits li{margin-bottom:5px}
+.vsh-limits b{color:var(--amber)}
+.vsh-final{margin-top:14px;padding:10px 12px;background:var(--panel2);border-radius:8px;
+  font-size:12px;color:var(--ink2);line-height:1.6;border-left:3px solid var(--amber)}
+.vsh-final b{color:var(--ink)}
+/* 관심종목(즐겨찾기) */
+.th-fav{width:30px;text-align:center !important;color:var(--muted)}
+.fin-fav{width:30px;text-align:center !important;padding:0 !important}
+.fav-btn{background:none;border:none;color:var(--line2);font-size:15px;cursor:pointer;padding:6px 3px;
+  transition:color .12s,transform .06s}
+.fav-btn:hover{color:var(--amber)}
+.fav-btn:active{transform:scale(.85)}
+.fav-btn.on{color:var(--amber)}
+.fin-pbtn-fav{font-weight:600}
+.fin-pbtn-fav.on{background:var(--amber);color:#2a1e08;border-color:var(--amber)}
+/* 공유 버튼 */
+.fpi-share{margin-left:auto;font-size:11px;font-weight:700;padding:4px 11px;border-radius:11px;
+  border:1px solid var(--teal);background:transparent;color:var(--teal);cursor:pointer;
+  transition:background .12s,transform .06s}
+.fpi-share:hover{background:var(--teal);color:#04211d}
+.fpi-share:active{transform:scale(.94)}
 /* IPO 상세(청약일·공모가·주관사) — 글자 크게, 잘 보이게 */
 .ipo-float{width:min(520px,94vw)}
 .ipo-body{padding:0 0 10px}
@@ -611,10 +686,6 @@ a.ipo-title:hover{color:var(--teal)}
 @media (max-width:640px){ .welcome-banner{flex-direction:column;align-items:flex-start;gap:8px} }
 @media (max-width:760px){
   .fin-table .mob-hide{display:none}
-  .fin-table{font-size:12.5px}
-  .fin-table td{padding:11px 7px}
-  .fin-table thead th{padding:9px 7px;font-size:11px}
-  .fin-nm b{font-size:13px}
   .fin-bar{gap:8px;padding:10px 12px}
   .fin-bar-row{gap:6px}
   .fin-segbtn{font-size:12px;padding:7px 12px}
@@ -1662,7 +1733,7 @@ cal: null, calY: 0, calM: 0, calFilter: {}, calAdminOpen: false, calAdminList: n
 glossaryOpen: false, glossary: null, glossQ: "", glossCat: "전체", dguideOpen: false, dguide: null,
 startOpen: false, startGuide: null, startTab: "guide",
 stock: null, stockLoading: false, live: null, newsTs: "",
-feedDisc: null, feedNews: null, feedReports: null, feedPolicy: null, feedHot: null, feedIpo: null, ipoOpen: false, ipoMin: false, ipoPos: null, ipoFilter: "up", policyFilter: "all", hotOpen: false, hotMin: false, hotPos: null, finOpen: false, finMin: false, finPos: null, finRank: null, finSort: "vscore", finSector: "", finSectors: null, finScope: "major", finMarket: "", finPeriod: "annual", finLoading: false, finPreset: "", moreOpen: false, stockOpen: false, stockMin: false, stockPos: null, stockSym: "", stockName: "", stockDetail: null, stockFilter: "", screenOpen: false, screenCond: {}, sectorAvg: null, welcomeHidden: false, searchQ: "", searchOpen: false, searchResults: [], chatOpen: (typeof window!=="undefined" && window.innerWidth>760), chatMin: false, chatPos: null, modal: false, reports: null, reportsLoading: false,
+feedDisc: null, feedNews: null, feedReports: null, feedPolicy: null, feedHot: null, feedIpo: null, ipoOpen: false, ipoMin: false, ipoPos: null, ipoFilter: "up", policyFilter: "all", hotOpen: false, hotMin: false, hotPos: null, finOpen: false, finMin: false, finPos: null, finRank: null, finSort: "vscore", finSector: "", finSectors: null, finScope: "major", finMarket: "", finPeriod: "annual", finLoading: false, finPreset: "", vsHelpOpen: false, _favs: null, moreOpen: false, stockOpen: false, stockMin: false, stockPos: null, stockSym: "", stockName: "", stockDetail: null, stockFilter: "", screenOpen: false, screenCond: {}, sectorAvg: null, welcomeHidden: false, searchQ: "", searchOpen: false, searchResults: [], chatOpen: (typeof window!=="undefined" && window.innerWidth>760), chatMin: false, chatPos: null, modal: false, reports: null, reportsLoading: false,
 chat: [], chatLastId: 0, chatUser: "익명", reacts: {}, indices: null, fx: null, corpOpen: false, corpTab: "dividend", corpData: null, corpMin: false, corpPos: null, corpQuery: "", calcOpen: false, calcTab: "yield", calcVals: {}, calcMin: false, calcPos: null, calcW: 520, recsCache: {},
 notice: "", emojiOpen: false, briefing: null, briefingOpen: false, presence: {site:0,chat:0},
 mflowOpen: false, mflow: null, mflowMkt: "KOSPI",
@@ -1933,6 +2004,70 @@ var SCREEN_PRESETS=[
    help:"가격도 적당하고 수익성도 좋은 기업. 워런 버핏식 '좋은 회사를 적정 가격에'.",
    cond:{per_max:15, roe_min:15, debt_max:100, opm_min:10}}
 ];
+function shareFallback(txt){
+// 클립보드 API 실패 시: 임시 textarea로 복사 시도, 그래도 안 되면 프롬프트
+try{
+  var ta=document.createElement("textarea");
+  ta.value=txt; ta.style.position="fixed"; ta.style.left="-9999px";
+  document.body.appendChild(ta); ta.select();
+  var ok=document.execCommand("copy");
+  document.body.removeChild(ta);
+  if(ok){ showToast({message:"결과를 복사했습니다!", level:"up", type:"info"}); return; }
+}catch(e){}
+try{ window.prompt("아래 내용을 복사하세요 (Ctrl+C)", txt); }catch(e){}
+}
+// ★ 관심종목(즐겨찾기) — localStorage 저장
+function favList(){
+  if(state._favs) return state._favs;
+  var v=[];
+  try{ if(window.localStorage){ v=JSON.parse(localStorage.getItem("reco_favs")||"[]")||[]; } }catch(e){ v=[]; }
+  state._favs=v; return v;
+}
+function isFav(sym){ return favList().indexOf(sym)>=0; }
+function toggleFav(sym){
+  var v=favList().slice();
+  var i=v.indexOf(sym);
+  if(i>=0){ v.splice(i,1); } else { v.push(sym); }
+  state._favs=v;
+  try{ if(window.localStorage) localStorage.setItem("reco_favs", JSON.stringify(v)); }catch(e){}
+  return v;
+}
+function vsHelpModalHTML(){
+if(!state.vsHelpOpen) return '';
+return '<div class="modal-overlay" data-action="vshelp-close"></div>'+
+'<div class="modal vsh-modal" data-stop="1">'+
+'<div class="modal-h"><b>⭐ 저평가 우량 점수란?</b>'+
+  '<button class="modal-x" data-action="vshelp-close">✕</button></div>'+
+'<div class="vsh-body">'+
+  '<p class="vsh-lead"><b>싸면서도 좋은 기업</b>을 찾기 위해 재무 지표를 100점 만점으로 계산한 점수입니다. '+
+  '높을수록 <b>가격 대비 실속이 좋다</b>는 뜻입니다.</p>'+
+  '<div class="vsh-sec">📊 어떻게 계산하나요</div>'+
+  '<div class="vsh-items">'+
+    '<div class="vsh-item"><span class="vsh-k">가치 45점</span><span class="vsh-v">PER·PBR이 낮을수록 높은 점수 (싼 가격)</span></div>'+
+    '<div class="vsh-item"><span class="vsh-k">수익성 40점</span><span class="vsh-v">ROE·영업이익률이 높을수록 (돈 잘 버는지)</span></div>'+
+    '<div class="vsh-item"><span class="vsh-k">성장 15점</span><span class="vsh-v">매출이 늘고 있는지</span></div>'+
+    '<div class="vsh-item vsh-minus"><span class="vsh-k">부채 감점</span><span class="vsh-v">부채비율 100% 초과 시 감점 (400%면 −60점)</span></div>'+
+  '</div>'+
+  '<div class="vsh-sec">🎨 색으로 보기</div>'+
+  '<div class="vsh-legend">'+
+    '<span><span class="vs-badge vs-a">60</span> 매우 우수</span>'+
+    '<span><span class="vs-badge vs-b">45</span> 우수</span>'+
+    '<span><span class="vs-badge vs-c">30</span> 보통</span>'+
+    '<span><span class="vs-badge vs-d">15</span> 낮음</span>'+
+    '<span><span class="vs-na">–</span> 평가 불가(적자 등)</span>'+
+  '</div>'+
+  '<div class="vsh-sec vsh-warn">⚠️ 꼭 알아두세요 (점수의 한계)</div>'+
+  '<ul class="vsh-limits">'+
+    '<li><b>재무 지표만 봅니다.</b> 기술력·브랜드·경영진·업황 전망은 반영되지 않습니다.</li>'+
+    '<li><b>성장주는 불리합니다.</b> 빠르게 크는 회사는 PER이 높은 게 정상인데, 점수는 이를 감점합니다. (예: 반도체·바이오)</li>'+
+    '<li><b>업종 차이를 무시합니다.</b> 은행은 원래 PBR이 낮고, 제약은 원래 높습니다. 같은 잣대로 비교하면 왜곡됩니다.</li>'+
+    '<li><b>과거 실적 기준입니다.</b> 작년 재무제표라 지금 상황과 다를 수 있습니다.</li>'+
+    '<li><b>싼 데는 이유가 있을 수 있습니다.</b> 점수가 높아도 사양 산업이거나 일회성 이익일 수 있습니다.</li>'+
+  '</ul>'+
+  '<div class="vsh-final">이 점수는 <b>후보를 좁히는 출발점</b>일 뿐입니다. 반드시 공시·뉴스·사업내용을 직접 확인하세요. '+
+  '<b>투자 권유가 아니며, 투자 판단과 책임은 본인에게 있습니다.</b></div>'+
+'</div></div>';
+}
 function vsBadge(v){
 if(v==null) return '<span class="vs-na" title="적자이거나 지표 부족으로 평가 불가">–</span>';
 var cls = v>=60?'vs-a' : (v>=45?'vs-b' : (v>=30?'vs-c' : 'vs-d'));
@@ -1993,7 +2128,10 @@ else {
   if(state.finMarket){ baseRows=baseRows.filter(function(r){ return (r.market||"").toUpperCase()===state.finMarket; }); }
   // ★ 프리셋(저평가주·우량주 등) 즉시 필터 — 사이트의 핵심 기능
   var activePreset=null;
-  if(state.finPreset){
+  if(state.finPreset==="fav"){
+    // 관심종목만 보기
+    baseRows=baseRows.filter(function(r){ return isFav(r.symbol); });
+  } else if(state.finPreset){
     for(var pi2=0;pi2<SCREEN_PRESETS.length;pi2++){
       if(SCREEN_PRESETS[pi2].k===state.finPreset){ activePreset=SCREEN_PRESETS[pi2]; break; }
     }
@@ -2004,7 +2142,7 @@ else {
     var opPos=(r.op_income!=null&&r.op_income>=0);
     var yoyPos=(r.revenue_yoy!=null&&r.revenue_yoy>=0);
     return '<tr class="fin-row" data-action="stock-detail" data-sym="'+esc(r.symbol)+'" data-name="'+esc(r.name)+'">'+
-      '<td class="fin-rank">'+(i+1)+'</td>'+
+      '<td class="fin-rank mob-hide">'+(i+1)+'</td>'+
       '<td class="fin-nm"><b>'+esc(r.name)+'</b><span class="fin-sec">'+esc(r.sector||'')+'</span></td>'+
       '<td class="fin-num fin-vs">'+vsBadge(r.vscore)+'</td>'+
       '<td class="fin-num mob-hide">'+fmtWonShort(r.revenue)+'</td>'+
@@ -2014,6 +2152,7 @@ else {
       '<td class="fin-num">'+fmtNum1(r.per)+'</td>'+
       '<td class="fin-num mob-hide">'+fmtNum2(r.pbr)+'</td>'+
       '<td class="fin-num mob-hide '+(yoyPos?'pos':'neg')+'">'+fmtPctYoy(r.revenue_yoy)+'</td>'+
+      '<td class="fin-fav"><button class="fav-btn'+(isFav(r.symbol)?" on":"")+'" data-action="fav-toggle" data-sym="'+esc(r.symbol)+'" title="관심종목">'+(isFav(r.symbol)?'★':'☆')+'</button></td>'+
       '</tr>';
   }).join("");
     var mc=(f&&f.market_counts)||{};
@@ -2037,15 +2176,19 @@ else {
         return '<button class="fin-pbtn'+(state.finPreset===p.k?" on":"")+'" data-action="fin-preset" data-pk="'+p.k+'" title="'+esc(p.desc)+'">'+esc(p.label)+'</button>';
       }).join("")+
       '<button class="fin-pbtn fin-pbtn-all'+(!state.finPreset?" on":"")+'" data-action="fin-preset" data-pk="">전체보기</button>'+
+      '<button class="fin-pbtn fin-pbtn-fav'+(state.finPreset==="fav"?" on":"")+'" data-action="fin-preset" data-pk="fav" title="관심종목만 보기">★ 관심 '+(favList().length||0)+'</button>'+
       '<button class="fin-pbtn fin-pbtn-more" data-action="screen-open" title="직접 조건 설정">⚙ 직접설정</button>'+
       '</div>'+
       '</div>'+
+      (state.finPreset==="fav" ? ('<div class="fin-preset-info"><div class="fpi-top"><b>★ 관심종목</b> <span class="fpi-cnt">'+sortedRows.length+'개</span></div>'+
+        '<div class="fpi-help">표에서 ☆를 눌러 관심종목에 추가하세요. 이 브라우저에 저장됩니다.</div></div>') :
       (activePreset?('<div class="fin-preset-info">'+
-        '<div class="fpi-top"><b>'+esc(activePreset.label)+'</b> <span class="fpi-cnt">'+sortedRows.length+'개 발굴</span></div>'+
+        '<div class="fpi-top"><b>'+esc(activePreset.label)+'</b> <span class="fpi-cnt">'+sortedRows.length+'개 발굴</span>'+
+        '<button class="fpi-share" data-action="fin-share" title="결과 공유">🔗 공유</button></div>'+
         '<div class="fpi-help">'+esc(activePreset.help)+'</div>'+
         '<div class="fpi-cond">조건: '+esc(activePreset.desc)+'</div>'+
         ((state.finScope!=="all")?('<div class="fpi-tip">💡 <b>전종목</b>으로 바꾸면 더 많이 찾을 수 있어요 <button class="fpi-btn" data-action="fin-scope" data-scope="all">전종목으로</button></div>'):'')+
-      '</div>'):'');
+      '</div>'):''));
     body=presetBar+'<div class="fin-bar">'+
       '<div class="fin-bar-row">'+
         '<div class="fin-seg" role="group">'+
@@ -2071,7 +2214,7 @@ else {
       '</div>'+
     '</div>'+
     '<div class="fin-tablewrap"><table class="fin-table"><thead><tr>'+
-      '<th>#</th><th>기업</th><th title="저평가 우량 점수(높을수록 싸고 좋음)">점수</th><th class="mob-hide">매출</th><th class="mob-hide">영업익</th><th class="mob-hide">영업%</th><th>ROE</th><th>PER</th><th class="mob-hide">PBR</th><th class="mob-hide">매출성장</th>'+
+      '<th class="mob-hide">#</th><th>기업</th><th class="th-vs">점수<button class="th-help" data-action="vs-help" title="점수란?">?</button></th><th class="mob-hide">매출</th><th class="mob-hide">영업익</th><th class="mob-hide">영업%</th><th>ROE</th><th>PER</th><th class="mob-hide">PBR</th><th class="mob-hide">매출성장</th><th class="th-fav">★</th>'+
       '</tr></thead><tbody>'+rows+'</tbody></table></div>'+
     '<div class="policy-attr">📊 DART재무(연결·전체자본 기준)+시세 · '+esc((f&&f.period_label)||((f&&f.year)||'')+'년')+' · 종목 클릭 시 공시·뉴스 · 참고용</div>'+partialMsg;
 }
@@ -4016,6 +4159,7 @@ corpEventsModalHTML()+
 hotDiscModalHTML()+
 financeModalHTML()+
 chatFloatHTML()+
+vsHelpModalHTML()+
 ipoModalHTML()+
 stockDetailHTML()+
 screenModalHTML()+
@@ -5143,6 +5287,46 @@ else if(a==="fin-close"){ state.finOpen=false; render(); }
 else if(a==="fin-min"){ state.finMin=!state.finMin; render(); }
 else if(a==="fin-sort"){ state.finSort=t.getAttribute("data-k")||"revenue"; patchFinancePanel(); if(state.finOpen) render(); }
 else if(a==="fin-sector"){ state.finSector=t.getAttribute("data-sec")||""; loadFinance(); }
+else if(a==="fav-toggle"){
+  e.stopPropagation();
+  var fsym=t.getAttribute("data-sym")||"";
+  if(fsym){ toggleFav(fsym); patchFinancePanel(); if(state.finOpen) render(); }
+  return;
+}
+else if(a==="fin-share"){
+  // ★ 결과 공유 — 현재 프리셋 상위 종목을 텍스트로 복사
+  var f=state.finRank;
+  if(f && f.rows){
+    var pk=state.finPreset, pInfo=null;
+    for(var si=0;si<SCREEN_PRESETS.length;si++){ if(SCREEN_PRESETS[si].k===pk){ pInfo=SCREEN_PRESETS[si]; break; } }
+    var br=f.rows;
+    if(state.finMarket) br=br.filter(function(r){ return (r.market||"").toUpperCase()===state.finMarket; });
+    if(pInfo) br=applyScreenCond(br, pInfo.cond);
+    var sr=finSortRows(br, state.finSort).slice(0,10);
+    var d=new Date(); var ds=(d.getMonth()+1)+"월 "+d.getDate()+"일";
+    var lines=[];
+    lines.push("📊 "+ds+" "+(pInfo?pInfo.label:"종목 발굴")+" TOP "+sr.length);
+    if(pInfo) lines.push("조건: "+pInfo.desc);
+    lines.push("");
+    sr.forEach(function(r,i){
+      lines.push((i+1)+". "+r.name+" (점수 "+(r.vscore!=null?Math.round(r.vscore):"–")+" · PER "+(r.per!=null?r.per:"–")+" · ROE "+(r.roe!=null?r.roe+"%":"–")+")");
+    });
+    lines.push("");
+    lines.push("※ 재무지표 기반 참고자료 · 투자권유 아님");
+    lines.push("🔗 모두의 리서치 모니터: "+location.origin);
+    var txt=lines.join("\n");
+    try{
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(txt).then(function(){
+          showToast({message:"결과를 복사했습니다. 카톡·카페에 붙여넣으세요!", level:"up", type:"info"});
+        }).catch(function(){ shareFallback(txt); });
+      } else { shareFallback(txt); }
+    }catch(err){ shareFallback(txt); }
+  }
+  return;
+}
+else if(a==="vs-help"){ state.vsHelpOpen=true; render(); }
+else if(a==="vshelp-close"){ if(t.getAttribute("data-stop"))return; state.vsHelpOpen=false; render(); }
 else if(a==="fin-preset"){
   var pk=t.getAttribute("data-pk")||"";
   state.finPreset=pk;

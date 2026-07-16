@@ -556,7 +556,11 @@ def create_app(cfg: Optional[Config] = None):
                 import threading as _tw
                 def _warm():
                     try:
-                        warm("wide")   # 1) 시총 상위 400개 먼저(빠르게 준비)
+                        warm("major")  # 0) 대표 96개 먼저(첫 화면 즉시 표시 — 30초 내)
+                    except Exception as _e:
+                        print(f"[재무 워밍업 major] 실패(무시): {_e}")
+                    try:
+                        warm("wide")   # 1) 시총 상위 400개
                     except Exception as _e:
                         print(f"[재무 워밍업 wide] 실패(무시): {_e}")
                     try:
