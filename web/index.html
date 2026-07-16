@@ -542,6 +542,15 @@ gap:1px;background:var(--line);min-height:0;overflow:hidden}
 .fin-num{font-variant-numeric:tabular-nums;color:var(--ink2)}
 .fin-num.neg{color:var(--red)}
 .fin-num.pos{color:var(--teal)}
+/* 저평가 우량 점수 배지 — 색으로 한눈에 */
+.fin-vs{width:44px}
+.vs-badge{display:inline-block;min-width:30px;padding:2px 6px;border-radius:9px;
+  font-size:11px;font-weight:800;font-variant-numeric:tabular-nums;text-align:center}
+.vs-a{background:var(--teal);color:#04211d}
+.vs-b{background:rgba(65,199,176,.28);color:var(--teal)}
+.vs-c{background:var(--panel3);color:var(--ink2)}
+.vs-d{background:transparent;color:var(--dim)}
+.vs-na{color:var(--line2);font-size:11px}
 .welcome-banner{display:flex;align-items:center;gap:12px;padding:10px 16px;margin:0;
   background:linear-gradient(90deg,rgba(45,212,191,.12),rgba(45,212,191,.03));
   border-bottom:1px solid var(--line2);font-size:12.5px;color:var(--ink2);line-height:1.5}
@@ -1604,7 +1613,7 @@ cal: null, calY: 0, calM: 0, calFilter: {}, calAdminOpen: false, calAdminList: n
 glossaryOpen: false, glossary: null, glossQ: "", glossCat: "전체", dguideOpen: false, dguide: null,
 startOpen: false, startGuide: null, startTab: "guide",
 stock: null, stockLoading: false, live: null, newsTs: "",
-feedDisc: null, feedNews: null, feedReports: null, feedPolicy: null, feedHot: null, feedIpo: null, ipoOpen: false, ipoMin: false, ipoPos: null, policyFilter: "all", hotOpen: false, hotMin: false, hotPos: null, finOpen: false, finMin: false, finPos: null, finRank: null, finSort: "revenue", finSector: "", finSectors: null, finScope: "major", finMarket: "", finPeriod: "annual", finLoading: false, finPreset: "", moreOpen: false, stockOpen: false, stockMin: false, stockPos: null, stockSym: "", stockName: "", stockDetail: null, stockFilter: "", screenOpen: false, screenCond: {}, sectorAvg: null, welcomeHidden: false, searchQ: "", searchOpen: false, searchResults: [], chatOpen: (typeof window!=="undefined" && window.innerWidth>760), chatMin: false, chatPos: null, modal: false, reports: null, reportsLoading: false,
+feedDisc: null, feedNews: null, feedReports: null, feedPolicy: null, feedHot: null, feedIpo: null, ipoOpen: false, ipoMin: false, ipoPos: null, policyFilter: "all", hotOpen: false, hotMin: false, hotPos: null, finOpen: false, finMin: false, finPos: null, finRank: null, finSort: "vscore", finSector: "", finSectors: null, finScope: "major", finMarket: "", finPeriod: "annual", finLoading: false, finPreset: "", moreOpen: false, stockOpen: false, stockMin: false, stockPos: null, stockSym: "", stockName: "", stockDetail: null, stockFilter: "", screenOpen: false, screenCond: {}, sectorAvg: null, welcomeHidden: false, searchQ: "", searchOpen: false, searchResults: [], chatOpen: (typeof window!=="undefined" && window.innerWidth>760), chatMin: false, chatPos: null, modal: false, reports: null, reportsLoading: false,
 chat: [], chatLastId: 0, chatUser: "익명", reacts: {}, indices: null, fx: null, corpOpen: false, corpTab: "dividend", corpData: null, corpMin: false, corpPos: null, corpQuery: "", calcOpen: false, calcTab: "yield", calcVals: {}, calcMin: false, calcPos: null, calcW: 520, recsCache: {},
 notice: "", emojiOpen: false, briefing: null, briefingOpen: false, presence: {site:0,chat:0},
 mflowOpen: false, mflow: null, mflowMkt: "KOSPI",
@@ -1688,6 +1697,7 @@ return '<div class="top">'+
 '<span class="meta-divider"></span>'+
 (pub?'':'<button class="btn bell" data-action="alerts-toggle">🔔'+(state.alertUnseen>0?'<span class="bell-badge">'+(state.alertUnseen>99?'99+':state.alertUnseen)+'</span>':'')+'</button>')+
 '<button class="btn" data-action="hotdisc">🔥 주요공시</button>'+
+'<button class="btn" data-action="ipo">🎈 공모주</button>'+
 '<button class="btn" data-action="chat-toggle">💬 채팅</button>'+
 '<button class="btn btn-more" data-action="more-menu">⋯ 더보기</button>'+
 '<span class="meta-divider"></span>'+
@@ -1839,6 +1849,7 @@ function fmtNum1(v){ return v==null?'–':v.toFixed(1); }
 function fmtNum2(v){ return v==null?'–':v.toFixed(2); }
 
 var FIN_SORTS=[
+  {k:"vscore",label:"⭐ 저평가 우량 점수순"},
   {k:"revenue",label:"매출 큰 순"},
   {k:"roe",label:"ROE 높은 순 (수익성)"},
   {k:"per",label:"PER 낮은 순 (저평가)"},
@@ -1848,6 +1859,10 @@ var FIN_SORTS=[
   {k:"debt_ratio",label:"부채비율 낮은 순 (안전)"}
 ];
 var SCREEN_PRESETS=[
+  {k:"top", label:"🏆 종합 우수", short:"종합",
+   desc:"저평가 우량 점수 45점 이상",
+   help:"가치(PER·PBR)·수익성(ROE·영업이익률)·성장·안정성을 종합 점수로 평가해 상위만 골랐습니다. 가장 균형 잡힌 선별입니다.",
+   cond:{vscore_min:45}},
   {k:"value", label:"💎 저평가 우량주", short:"저평가",
    desc:"PER 10↓ · PBR 1↓ · ROE 8↑ · 부채 200↓",
    help:"싸면서도 돈을 잘 벌고 빚이 적은 기업. 단순히 주가만 싼 게 아니라 실속 있는 곳만 골랐습니다.",
@@ -1869,6 +1884,11 @@ var SCREEN_PRESETS=[
    help:"가격도 적당하고 수익성도 좋은 기업. 워런 버핏식 '좋은 회사를 적정 가격에'.",
    cond:{per_max:15, roe_min:15, debt_max:100, opm_min:10}}
 ];
+function vsBadge(v){
+if(v==null) return '<span class="vs-na" title="적자이거나 지표 부족으로 평가 불가">–</span>';
+var cls = v>=60?'vs-a' : (v>=45?'vs-b' : (v>=30?'vs-c' : 'vs-d'));
+return '<span class="vs-badge '+cls+'" title="저평가 우량 점수 '+v+'점 (100점 만점)">'+Math.round(v)+'</span>';
+}
 function applyScreenCond(rows, cond){
 if(!cond) return rows;
 return rows.filter(function(r){
@@ -1937,7 +1957,8 @@ else {
     return '<tr class="fin-row" data-action="stock-detail" data-sym="'+esc(r.symbol)+'" data-name="'+esc(r.name)+'">'+
       '<td class="fin-rank">'+(i+1)+'</td>'+
       '<td class="fin-nm"><b>'+esc(r.name)+'</b><span class="fin-sec">'+esc(r.sector||'')+'</span></td>'+
-      '<td class="fin-num">'+fmtWonShort(r.revenue)+'</td>'+
+      '<td class="fin-num fin-vs">'+vsBadge(r.vscore)+'</td>'+
+      '<td class="fin-num mob-hide">'+fmtWonShort(r.revenue)+'</td>'+
       '<td class="fin-num mob-hide '+(opPos?'':'neg')+'">'+fmtWonShort(r.op_income)+'</td>'+
       '<td class="fin-num mob-hide">'+fmtPct1(r.op_margin)+'</td>'+
       '<td class="fin-num">'+fmtPct1(r.roe)+'</td>'+
@@ -2001,13 +2022,14 @@ else {
       '</div>'+
     '</div>'+
     '<div class="fin-tablewrap"><table class="fin-table"><thead><tr>'+
-      '<th>#</th><th>기업</th><th>매출</th><th class="mob-hide">영업익</th><th class="mob-hide">영업%</th><th>ROE</th><th>PER</th><th class="mob-hide">PBR</th><th class="mob-hide">매출성장</th>'+
+      '<th>#</th><th>기업</th><th title="저평가 우량 점수(높을수록 싸고 좋음)">점수</th><th class="mob-hide">매출</th><th class="mob-hide">영업익</th><th class="mob-hide">영업%</th><th>ROE</th><th>PER</th><th class="mob-hide">PBR</th><th class="mob-hide">매출성장</th>'+
       '</tr></thead><tbody>'+rows+'</tbody></table></div>'+
     '<div class="policy-attr">📊 DART재무(연결·전체자본 기준)+시세 · '+esc((f&&f.period_label)||((f&&f.year)||'')+'년')+' · 종목 클릭 시 공시·뉴스 · 참고용</div>'+partialMsg;
 }
 return head+'<div class="feedbody fin-panel-body">'+body+'</div>';
 }
 var SCREEN_CONDS=[
+  {k:"vscore_min",label:"저평가 우량 점수 이상",field:"vscore",dir:"min",ph:"예: 45"},
   {k:"per_max",label:"PER 이하",field:"per",dir:"max",ph:"예: 10"},
   {k:"pbr_max",label:"PBR 이하",field:"pbr",dir:"max",ph:"예: 1"},
   {k:"roe_min",label:"ROE 이상(%)",field:"roe",dir:"min",ph:"예: 15"},
@@ -3514,6 +3536,7 @@ var QUICK = ["📈 상승 주목","📉 조정 주의","💰 거래대금 급증
 function moreMenuHTML(){
 if(!state.moreOpen) return '';
 var items=[
+  {a:"ipo",label:"🎈 신규 공모주(IPO)"},
   {a:"glossary",label:"📖 용어사전"},
   {a:"dguide",label:"📑 공시읽기"},
   {a:"calc",label:"🧮 투자계산기"},
@@ -3912,6 +3935,7 @@ corpEventsModalHTML()+
 hotDiscModalHTML()+
 financeModalHTML()+
 chatFloatHTML()+
+ipoModalHTML()+
 stockDetailHTML()+
 screenModalHTML()+
 moreMenuHTML()+
@@ -5041,7 +5065,8 @@ else if(a==="fin-preset"){
   var pk=t.getAttribute("data-pk")||"";
   state.finPreset=pk;
   // 프리셋에 맞는 정렬 자동 적용(초보자 편의)
-  if(pk==="value"){ state.finSort="per"; }          // 저평가 → PER 낮은순
+  if(pk==="top"){ state.finSort="vscore"; }         // 종합 → 점수순
+  else if(pk==="value"){ state.finSort="per"; }          // 저평가 → PER 낮은순
   else if(pk==="quality"){ state.finSort="roe"; }    // 우량 → ROE 높은순
   else if(pk==="growth"){ state.finSort="revenue_yoy"; }  // 성장 → 매출성장 높은순
   else if(pk==="stable"){ state.finSort="debt_ratio"; }   // 안정 → 부채 낮은순

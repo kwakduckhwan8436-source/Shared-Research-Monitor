@@ -17,7 +17,7 @@ from typing import Any, Optional
 
 from app.llm import explain as explain_mod
 
-BUILD_VERSION = "2026.07.05-screenhero1"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
+BUILD_VERSION = "2026.07.05-vscore1"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
 
 
 def _rsi_series(values: list, period: int = 14) -> list:
@@ -1608,6 +1608,36 @@ def register_routes(app: Any, ctx: Any) -> None:
         except Exception:
             pass
 
+    def _value_score(per, pbr, roe, opm, debt, growth):
+        """저평가 우량주 종합점수(0~100) — 높을수록 '싸면서 좋은' 기업.
+        가치(PER·PBR) + 수익성(ROE·영업이익률) + 성장 가점, 고부채 감점.
+        적자(PER 없음)나 ROE 없으면 평가 불가(None).
+        ※ 참고 지표일 뿐 투자권유 아님."""
+        if per is None or per <= 0 or roe is None:
+            return None
+        s = 0.0
+        w = 0.0
+        # 가치: PER 5=만점, 20=0점 (25점)
+        s += max(0.0, min(25.0, 25.0 * (1 - (per - 5) / 15))); w += 25
+        # 가치: PBR 0.4=만점, 2.0=0점 (20점)
+        if pbr is not None and pbr > 0:
+            s += max(0.0, min(20.0, 20.0 * (1 - (pbr - 0.4) / 1.6))); w += 20
+        # 수익성: ROE 5%=0, 20%=만점 (25점)
+        s += max(0.0, min(25.0, 25.0 * (roe - 5) / 15)); w += 25
+        # 수익성: 영업이익률 3%=0, 15%=만점 (15점)
+        if opm is not None:
+            s += max(0.0, min(15.0, 15.0 * (opm - 3) / 12)); w += 15
+        # 성장: 매출성장 0%=0, 20%=만점 (15점)
+        if growth is not None:
+            s += max(0.0, min(15.0, 15.0 * (growth * 100.0) / 20)); w += 15
+        if w < 50:
+            return None
+        base = s / w * 100.0
+        # ★ 고부채 감점: 100% 초과부터, 400%면 -60(사실상 탈락)
+        if debt is not None and debt > 100:
+            base -= min(60.0, (debt - 100) / 5.0)
+        return round(max(0.0, base), 1)
+
     def _build_finance(scope: str, period: str = "annual") -> dict:
         """scope별 재무 순위 계산(무거운 작업). 엔드포인트·워밍업 공용.
         period: annual(연간 사업보고서) | latest(최신 분기 우선, 없으면 연간 폴백)."""
@@ -1746,6 +1776,8 @@ def register_routes(app: Any, ctx: Any) -> None:
                     "close": pinfo.get("close"), "market_cap": mcap,
                     "price_date": pinfo.get("bas_dt"), "bsns_year": fin.get("bsns_year"),
                     "fs_div": fin.get("fs_div"),
+                    "vscore": _value_score(per, pbr, fin.get("roe"), fin.get("op_margin"),
+                                           fin.get("debt_ratio"), fin.get("revenue_yoy")),
                 })
             entry["rows"] = rows
             # 성능 통계: 소요 시간 + DART 청크 성공/실패
