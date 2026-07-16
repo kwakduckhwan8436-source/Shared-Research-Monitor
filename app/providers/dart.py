@@ -210,6 +210,61 @@ class DARTProvider(DataProvider):
         items.sort(key=lambda x: x["rcept_no"], reverse=True)
         return items
 
+    def ipo_detail(self, corp_code: str, bgn_de: str, end_de: str) -> dict:
+        """증권신고서(지분증권) 주요정보 — 청약기일·납입기일·주관사·공모가.
+        OpenDART estkRs.json. 반환: {sbd(청약기일), pymd(납입기일), slprc(공모가),
+        stkcnt(증권수량), slta(모집총액), underwriters:[{name,role}], ...}
+        데이터 없으면 빈 dict."""
+        out: dict = {}
+        if not self.api_key or not corp_code:
+            return out
+        try:
+            body = self._get("/estkRs.json", {
+                "corp_code": corp_code, "bgn_de": bgn_de, "end_de": end_de,
+            })
+        except Exception:
+            return out
+        if not body:
+            return out
+        # 응답은 group 배열(일반사항/증권의종류/인수인정보/...)
+        groups = body.get("group") or []
+        if isinstance(groups, dict):
+            groups = [groups]
+        for g in groups:
+            title = (g.get("title") or "").strip()
+            rows = g.get("list") or []
+            if isinstance(rows, dict):
+                rows = [rows]
+            if not rows:
+                continue
+            if title == "일반사항":
+                r = rows[0]
+                out["sbd"] = (r.get("sbd") or "").strip()        # 청약기일
+                out["pymd"] = (r.get("pymd") or "").strip()      # 납입기일
+                out["sband"] = (r.get("sband") or "").strip()    # 청약공고일
+                out["asand"] = (r.get("asand") or "").strip()    # 배정공고일
+            elif title == "증권의종류":
+                r = rows[0]
+                out["stksen"] = (r.get("stksen") or "").strip()  # 증권종류
+                out["stkcnt"] = (r.get("stkcnt") or "").strip()  # 증권수량
+                out["slprc"] = (r.get("slprc") or "").strip()    # 모집(공모)가액
+                out["slta"] = (r.get("slta") or "").strip()      # 모집총액
+                out["slmthn"] = (r.get("slmthn") or "").strip()  # 모집방법
+            elif title == "인수인정보":
+                uws = []
+                for r in rows:
+                    nm = (r.get("actnmn") or "").strip()
+                    if not nm:
+                        continue
+                    uws.append({
+                        "name": nm,                                  # 인수인명(증권사)
+                        "role": (r.get("actsen") or "").strip(),     # 인수인구분(대표주관 등)
+                        "amount": (r.get("udtamt") or "").strip(),   # 인수금액
+                    })
+                if uws:
+                    out["underwriters"] = uws
+        return out
+
     def recent_ipos(self, now: datetime, *, days: int = 30,
                     page_count: int = 100, max_pages: int = 3) -> list[dict]:
         """최근 공모주(IPO) 관련 공시 — 증권신고(지분증권) 위주.
@@ -254,11 +309,13 @@ class DARTProvider(DataProvider):
                     tag = "신규"
                 items.append({
                     "corp": it.get("corp_name", ""),
+                    "corp_code": it.get("corp_code", "") or "",
                     "symbol": it.get("stock_code", "") or "",
                     "market": it.get("corp_cls", ""),
                     "title": nm,
                     "tag": tag,
                     "rcept_no": rcept,
+                    "rcept_dt": dt,
                     "published_at": iso,
                     "date_only": True,
                     "url": f"https://dart.fss.or.kr/dsaf001/main.do?rcpNo={rcept}",

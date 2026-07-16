@@ -17,7 +17,7 @@ from typing import Any, Optional
 
 from app.llm import explain as explain_mod
 
-BUILD_VERSION = "2026.07.05-vscore1"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
+BUILD_VERSION = "2026.07.05-ipodetail1"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
 
 
 def _rsi_series(values: list, period: int = 14) -> list:
@@ -1564,6 +1564,31 @@ def register_routes(app: Any, ctx: Any) -> None:
             try:
                 fetched = prov.recent_ipos(ctx.clock.now(), days=30)
                 if fetched:
+                    # ★ 청약일·주관사·공모가 상세 병합(estkRs.json) — 병렬 조회
+                    def _enrich(it):
+                        cc = it.get("corp_code") or ""
+                        dt = it.get("rcept_dt") or ""
+                        if not cc or len(dt) != 8:
+                            return it
+                        # 접수일 전후로 넉넉히 조회(정정신고 포함)
+                        try:
+                            from datetime import datetime as _dt, timedelta as _td
+                            d = _dt.strptime(dt, "%Y%m%d")
+                            bgn = (d - _td(days=60)).strftime("%Y%m%d")
+                            end = (d + _td(days=10)).strftime("%Y%m%d")
+                            det = prov.ipo_detail(cc, bgn, end)
+                            if det:
+                                it["detail"] = det
+                        except Exception:
+                            pass
+                        return it
+                    try:
+                        from concurrent.futures import ThreadPoolExecutor
+                        head = fetched[:25]   # 상위 25건만 상세 조회(호출 절약)
+                        with ThreadPoolExecutor(max_workers=4) as ex:
+                            list(ex.map(_enrich, head))
+                    except Exception:
+                        pass
                     _ipo_cache["items"] = fetched
                     _ipo_cache["err"] = None
                 else:
