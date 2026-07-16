@@ -17,7 +17,7 @@ from typing import Any, Optional
 
 from app.llm import explain as explain_mod
 
-BUILD_VERSION = "2026.07.05-tradediag1"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
+BUILD_VERSION = "2026.07.05-tradediag2"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
 
 
 def _rsi_series(values: list, period: int = 14) -> list:
@@ -1671,7 +1671,11 @@ def register_routes(app: Any, ctx: Any) -> None:
             if le:
                 out["reason"] = str(le)
             raw = (getattr(prov, "last_raw", "") or "")
-            if "SERVICE_KEY_IS_NOT_REGISTERED" in raw:
+            if "403" in str(le or ""):
+                out["reason"] = ("이 API에 대한 활용신청이 아직 완료되지 않았습니다(HTTP 403). "
+                                 "공공데이터포털에서 '관세청_품목별 국가별 수출입실적'을 "
+                                 "활용신청하면 몇 분 뒤부터 사용할 수 있습니다.")
+            elif "SERVICE_KEY_IS_NOT_REGISTERED" in raw:
                 out["reason"] = ("이 API에 활용신청이 되어 있지 않습니다. 공공데이터포털에서 "
                                  "'관세청_품목별 국가별 수출입실적' 활용신청을 해주세요.")
             elif "LIMITED_NUMBER_OF_SERVICE_REQUESTS" in raw:
@@ -1718,13 +1722,21 @@ def register_routes(app: Any, ctx: Any) -> None:
         hints = []
         le = (out.get("last_error") or "")
         raws = (raw or "")
-        if "SERVICE_KEY_IS_NOT_REGISTERED" in raws or "30" in le:
-            hints.append("이 API에 활용신청이 안 됐습니다. 공공데이터포털에서 "
-                         "'관세청_품목별 국가별 수출입실적' 활용신청을 하세요.")
-        if "LIMITED_NUMBER_OF_SERVICE_REQUESTS" in raws or "22" in le:
+        if "403" in le:
+            hints.append("★ HTTP 403 = 이 API에 대한 접근 권한이 없습니다. "
+                         "가장 흔한 원인은 '활용신청 미완료'입니다. "
+                         "공공데이터포털 → '관세청_품목별 국가별 수출입실적' → 활용신청 "
+                         "(https://www.data.go.kr/data/15100475/openapi.do) 후 "
+                         "몇 분~1시간 뒤 반영됩니다.")
+            hints.append("이미 신청했다면: 마이페이지 → 오픈API → 개발계정에서 "
+                         "'승인' 상태인지, 그리고 그 API에 쓰는 키가 DATA_GO_KR_KEY 와 "
+                         "같은 키인지 확인하세요.")
+        if "SERVICE_KEY_IS_NOT_REGISTERED" in raws:
+            hints.append("키가 이 API에 등록되지 않았습니다 → 활용신청 필요.")
+        if "LIMITED_NUMBER_OF_SERVICE_REQUESTS" in raws:
             hints.append("일일 호출 한도를 초과했습니다. 내일 다시 시도하세요.")
-        if "HTTP 4" in le or "HTTP 5" in le:
-            hints.append("서버 응답 오류입니다. 잠시 후 재시도하세요.")
+        if "HTTP 5" in le:
+            hints.append("공공데이터포털 서버 오류입니다. 잠시 후 재시도하세요.")
         if out.get("rows") == 0 and not hints:
             hints.append("응답은 왔지만 데이터가 없습니다. 조회월이 아직 집계 전이거나 "
                          "해당 품목·국가 실적이 없을 수 있습니다.")

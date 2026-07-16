@@ -13,6 +13,7 @@ API: http://apis.data.go.kr/1220000/nitemtrade/getNitemtradeList
 """
 from __future__ import annotations
 
+import urllib.error
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
@@ -117,6 +118,15 @@ class TradeProvider:
                         self.last_error = f"HTTP {resp.status}"
                         continue
                     return body
+            except urllib.error.HTTPError as e:
+                # ★ 403 등 오류 응답의 '본문'에 실제 사유가 담겨 온다(반드시 읽을 것)
+                try:
+                    body = e.read().decode("utf-8", "replace")
+                except Exception:
+                    body = ""
+                self.last_raw = body[:800]
+                self.last_error = f"HTTP {e.code}" + (f" · {body[:200]}" if body else "")
+                continue
             except Exception as e:
                 self.last_error = f"{type(e).__name__}: {e}"
                 continue
