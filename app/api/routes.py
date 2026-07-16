@@ -17,7 +17,7 @@ from typing import Any, Optional
 
 from app.llm import explain as explain_mod
 
-BUILD_VERSION = "2026.07.05-favshare1"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
+BUILD_VERSION = "2026.07.05-trade1"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
 
 
 def _rsi_series(values: list, period: int = 14) -> list:
@@ -212,6 +212,7 @@ def register_routes(app: Any, ctx: Any) -> None:
                 "policy_news": bool(getattr(ctx, "policy_news", None)),
                 "public_data_set": bool(getattr(ctx.config, "data_go_key", "")),
                 "stock_price_set": bool(getattr(ctx.config, "stock_price_key", "")),
+                "trade_set": bool(getattr(ctx, "trade", None) and getattr(ctx.trade, "enabled", False)),
                 "corp_map_size": len(getattr(getattr(ctx, "dart", None), "corp_code_map", {}) or {}),
                 "fx_set": bool(getattr(ctx.config, "exim_key", "")),
                 "admin_set": bool(getattr(ctx.config, "admin_token", "")),
@@ -1567,6 +1568,107 @@ def register_routes(app: Any, ctx: Any) -> None:
         if not ds:
             return (None, None)
         return (min(ds), max(ds))
+
+    # ── 수출입(관세청 품목별) ────────────────────────────────────
+    _trade_cache: dict = {"data": None, "at": 0.0, "err": None}
+
+    @app.get("/api/trade/items")
+    def trade_items(refresh: bool = False) -> dict:
+        """품목별 수출 동향 — 증시 섹터와 연결.
+        반도체·자동차·조선 등 주요 품목의 최근월 수출액과 전년 동월비.
+        주요 교역국 합산(전체 수출과는 차이 있음). 월 단위 데이터라 6시간 캐시."""
+        from app.providers.trade import TRADE_ITEMS, TRADE_COUNTRIES
+        prov = getattr(ctx, "trade", None)
+        if prov is None or not getattr(prov, "enabled", False):
+            return {"items": [], "error": "수출입 API 키가 없습니다. "
+                    "공공데이터포털에서 '관세청_품목별 국가별 수출입실적' 활용신청 후 이용하세요."}
+        now_t = _time.time()
+        if (not refresh) and _trade_cache["data"] and (now_t - _trade_cache["at"] < 21600):
+            return _trade_cache["data"]
+
+        now = ctx.clock.now()
+        # 최근 확정월: 매월 15일경 전월 갱신 → 오늘 기준 2개월 전을 안전선으로
+        from datetime import date as _d
+        y, m = now.year, now.month
+        # 2개월 전
+        tm = m - 2
+        ty = y
+        while tm <= 0:
+            tm += 12
+            ty -= 1
+        cur_ym = f"{ty:04d}{tm:02d}"
+        prev_ym = f"{ty-1:04d}{tm:02d}"     # 전년 동월
+
+        def _fetch_item(it):
+            """한 품목: 주요국 합산(당월 + 전년동월)."""
+            hs = it["hs"]
+            cur_exp = 0.0
+            prev_exp = 0.0
+            cur_imp = 0.0
+            by_country = []
+            got = False
+            for c in TRADE_COUNTRIES:
+                try:
+                    rows = prov.item_trade(hs, c["cd"], prev_ym, cur_ym)
+                except Exception:
+                    continue
+                if not rows:
+                    continue
+                got = True
+                ce = 0.0
+                pe = 0.0
+                ci = 0.0
+                for r in rows:
+                    ym = (r.get("year") or "").replace(".", "")
+                    e = r.get("exp_dlr") or 0.0
+                    i = r.get("imp_dlr") or 0.0
+                    if ym == cur_ym:
+                        ce += e
+                        ci += i
+                    elif ym == prev_ym:
+                        pe += e
+                cur_exp += ce
+                prev_exp += pe
+                cur_imp += ci
+                if ce > 0:
+                    by_country.append({"name": c["name"], "cd": c["cd"], "exp": ce,
+                                       "yoy": (round((ce - pe) / pe * 100, 1) if pe > 0 else None)})
+            if not got:
+                return None
+            by_country.sort(key=lambda x: x["exp"], reverse=True)
+            yoy = (round((cur_exp - prev_exp) / prev_exp * 100, 1)) if prev_exp > 0 else None
+            return {
+                "hs": hs, "name": it["name"], "icon": it["icon"], "sector": it["sector"],
+                "stocks": it["stocks"],
+                "exp": cur_exp, "imp": cur_imp, "balance": cur_exp - cur_imp,
+                "exp_prev": prev_exp, "yoy": yoy,
+                "top_countries": by_country[:3],
+            }
+
+        results = []
+        err = None
+        try:
+            from concurrent.futures import ThreadPoolExecutor
+            with ThreadPoolExecutor(max_workers=4) as ex:
+                for r in ex.map(_fetch_item, TRADE_ITEMS):
+                    if r:
+                        results.append(r)
+        except Exception as e:
+            err = f"수출입 조회 오류: {e}"
+        # 수출액 큰 순
+        results.sort(key=lambda x: x.get("exp") or 0, reverse=True)
+        out = {"items": results, "count": len(results),
+               "period": f"{ty}년 {tm}월", "period_ym": cur_ym,
+               "ts": now.isoformat(),
+               "note": "주요 교역국(중국·미국·베트남 등 10개국) 합산 기준 · 전체 수출과 차이가 있을 수 있습니다.",
+               "attribution": "관세청 수출입무역통계(공공데이터포털) · 투자권유 아님"}
+        if err and not results:
+            out["error"] = err
+        elif not results:
+            out["note2"] = "데이터가 없습니다. API 활용신청 상태를 확인하세요."
+        _trade_cache["data"] = out
+        _trade_cache["at"] = now_t
+        return out
 
     @app.get("/api/feed/ipo")
     def feed_ipo(limit: int = 30) -> dict:

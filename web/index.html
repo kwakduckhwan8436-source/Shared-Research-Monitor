@@ -438,6 +438,14 @@ gap:3px;padding:6px 0;cursor:pointer;color:var(--muted);min-height:48px}
 .sd-news-row{padding:10px 4px;font-size:13px}
 .sd-fbtn{font-size:12px;padding:5px 11px;min-height:32px}
 /* 재무 순위표: 폰에서 터치·가독성 */
+.tr-float{width:96vw !important;left:2vw !important;right:2vw !important;max-width:96vw !important}
+.tr-name{font-size:15px}
+.tr-yoy{font-size:15px}
+.tr-nums{font-size:13px}
+.tr-nums b{font-size:13.5px}
+.tr-cty{font-size:11.5px;padding:4px 9px}
+.tr-stk{font-size:12.5px;padding:5px 11px;min-height:30px}
+.tr-period{font-size:13px}
 .ipo-float{width:96vw !important;left:2vw !important;right:2vw !important;max-width:96vw !important}
 .ipo-fbtn{font-size:13.5px;padding:10px 16px;min-height:42px}
 .ipo-corp{font-size:16px}
@@ -675,6 +683,37 @@ gap:1px;background:var(--line);min-height:0;overflow:hidden}
 .ipo-title{display:block;font-size:12px;color:var(--dim);text-decoration:none;line-height:1.5}
 a.ipo-title:hover{color:var(--teal)}
 .ipo-link{font-size:11px;color:var(--teal)}
+/* 품목별 수출 동향 */
+.tr-float{width:min(520px,94vw)}
+.tr-body{padding:0 0 10px}
+.tr-period{padding:11px 13px;font-size:12.5px;color:var(--ink2);background:var(--panel2);
+  border-bottom:1px solid var(--line);position:sticky;top:0;z-index:2}
+.tr-period b{color:var(--teal)}
+.tr-item{padding:12px 14px;border-bottom:1px solid var(--line)}
+.tr-item:hover{background:var(--panel2)}
+.tr-head{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.tr-ico{font-size:17px;flex:none}
+.tr-name{flex:1;font-size:14.5px;font-weight:800;color:var(--ink)}
+.tr-yoy{flex:none;font-size:14px;font-weight:800;font-variant-numeric:tabular-nums}
+.tr-yoy.pos{color:var(--teal)}
+.tr-yoy.neg{color:var(--red)}
+.tr-nums{display:flex;gap:14px;font-size:12.5px;color:var(--dim);margin-bottom:6px;flex-wrap:wrap}
+.tr-nums b{color:var(--ink2);font-variant-numeric:tabular-nums;font-size:13px}
+.tr-nums b.pos{color:var(--teal)}
+.tr-nums b.neg{color:var(--red)}
+.tr-ctys{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px}
+.tr-cty{font-size:11px;padding:3px 8px;border-radius:8px;background:var(--panel3);color:var(--ink2);
+  font-variant-numeric:tabular-nums}
+.tr-cty em{font-style:normal;font-weight:700;font-size:10px}
+.tr-cty em.pos{color:var(--teal)}
+.tr-cty em.neg{color:var(--red)}
+.tr-stks{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+.tr-stks-k{font-size:10px;color:var(--dim);margin-right:2px}
+.tr-stk{font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:9px;cursor:pointer;
+  background:rgba(65,199,176,.14);color:var(--teal);transition:background .12s,transform .06s}
+.tr-stk:hover{background:var(--teal);color:#04211d}
+.tr-stk:active{transform:scale(.94)}
+.tr-note{padding:9px 13px;font-size:10.5px;color:var(--dim);line-height:1.5;background:var(--panel2)}
 .welcome-banner{display:flex;align-items:center;gap:12px;padding:10px 16px;margin:0;
   background:linear-gradient(90deg,rgba(45,212,191,.12),rgba(45,212,191,.03));
   border-bottom:1px solid var(--line2);font-size:12.5px;color:var(--ink2);line-height:1.5}
@@ -1733,7 +1772,7 @@ cal: null, calY: 0, calM: 0, calFilter: {}, calAdminOpen: false, calAdminList: n
 glossaryOpen: false, glossary: null, glossQ: "", glossCat: "전체", dguideOpen: false, dguide: null,
 startOpen: false, startGuide: null, startTab: "guide",
 stock: null, stockLoading: false, live: null, newsTs: "",
-feedDisc: null, feedNews: null, feedReports: null, feedPolicy: null, feedHot: null, feedIpo: null, ipoOpen: false, ipoMin: false, ipoPos: null, ipoFilter: "up", policyFilter: "all", hotOpen: false, hotMin: false, hotPos: null, finOpen: false, finMin: false, finPos: null, finRank: null, finSort: "vscore", finSector: "", finSectors: null, finScope: "major", finMarket: "", finPeriod: "annual", finLoading: false, finPreset: "", vsHelpOpen: false, _favs: null, moreOpen: false, stockOpen: false, stockMin: false, stockPos: null, stockSym: "", stockName: "", stockDetail: null, stockFilter: "", screenOpen: false, screenCond: {}, sectorAvg: null, welcomeHidden: false, searchQ: "", searchOpen: false, searchResults: [], chatOpen: (typeof window!=="undefined" && window.innerWidth>760), chatMin: false, chatPos: null, modal: false, reports: null, reportsLoading: false,
+feedDisc: null, feedNews: null, feedReports: null, feedPolicy: null, feedHot: null, feedIpo: null, ipoOpen: false, ipoMin: false, ipoPos: null, ipoFilter: "up", tradeOpen: false, tradeMin: false, tradePos: null, tradeData: null, policyFilter: "all", hotOpen: false, hotMin: false, hotPos: null, finOpen: false, finMin: false, finPos: null, finRank: null, finSort: "vscore", finSector: "", finSectors: null, finScope: "major", finMarket: "", finPeriod: "annual", finLoading: false, finPreset: "", vsHelpOpen: false, _favs: null, moreOpen: false, stockOpen: false, stockMin: false, stockPos: null, stockSym: "", stockName: "", stockDetail: null, stockFilter: "", screenOpen: false, screenCond: {}, sectorAvg: null, welcomeHidden: false, searchQ: "", searchOpen: false, searchResults: [], chatOpen: (typeof window!=="undefined" && window.innerWidth>760), chatMin: false, chatPos: null, modal: false, reports: null, reportsLoading: false,
 chat: [], chatLastId: 0, chatUser: "익명", reacts: {}, indices: null, fx: null, corpOpen: false, corpTab: "dividend", corpData: null, corpMin: false, corpPos: null, corpQuery: "", calcOpen: false, calcTab: "yield", calcVals: {}, calcMin: false, calcPos: null, calcW: 520, recsCache: {},
 notice: "", emojiOpen: false, briefing: null, briefingOpen: false, presence: {site:0,chat:0},
 mflowOpen: false, mflow: null, mflowMkt: "KOSPI",
@@ -1818,6 +1857,7 @@ return '<div class="top">'+
 (pub?'':'<button class="btn bell" data-action="alerts-toggle">🔔'+(state.alertUnseen>0?'<span class="bell-badge">'+(state.alertUnseen>99?'99+':state.alertUnseen)+'</span>':'')+'</button>')+
 '<button class="btn" data-action="hotdisc">🔥 주요공시</button>'+
 '<button class="btn" data-action="ipo">🎈 공모주</button>'+
+'<button class="btn" data-action="trade">🚢 수출동향</button>'+
 '<button class="btn" data-action="chat-toggle">💬 채팅</button>'+
 '<button class="btn btn-more" data-action="more-menu">⋯ 더보기</button>'+
 '<span class="meta-divider"></span>'+
@@ -2031,6 +2071,62 @@ function toggleFav(sym){
   state._favs=v;
   try{ if(window.localStorage) localStorage.setItem("reco_favs", JSON.stringify(v)); }catch(e){}
   return v;
+}
+function tradeModalHTML(){
+if(!state.tradeOpen) return '';
+var f=state.tradeData;
+var body;
+if(!f){ body='<div class="adm-load">수출입 데이터를 불러오는 중…<br><span class="fin-load-sub">주요 품목·국가를 조회합니다 (10~20초)</span></div>'; }
+else if(f.error){ body='<div class="ce-note">'+esc(f.error)+'</div>'; }
+else if(!f.items || !f.items.length){ body='<div class="ce-note">'+esc(f.note2||"수출입 데이터가 없습니다.")+'</div>'; }
+else {
+  var rows=f.items.map(function(it){
+    var yoyCls = it.yoy==null?'' : (it.yoy>=0?'pos':'neg');
+    var yoyTxt = it.yoy==null?'–' : ((it.yoy>=0?'+':'')+it.yoy.toFixed(1)+'%');
+    var tops = (it.top_countries||[]).map(function(c){
+      var cy = c.yoy==null?'' : ' <em class="'+(c.yoy>=0?'pos':'neg')+'">'+(c.yoy>=0?'+':'')+c.yoy.toFixed(0)+'%</em>';
+      return '<span class="tr-cty">'+esc(c.name)+' $'+fmtUsdShort(c.exp)+cy+'</span>';
+    }).join('');
+    var stks = (it.stocks||[]).map(function(s){
+      return '<span class="tr-stk" data-action="tr-stock" data-name="'+esc(s)+'">'+esc(s)+'</span>';
+    }).join('');
+    return '<div class="tr-item">'+
+      '<div class="tr-head">'+
+        '<span class="tr-ico">'+esc(it.icon||'📦')+'</span>'+
+        '<span class="tr-name">'+esc(it.name)+'</span>'+
+        '<span class="tr-yoy '+yoyCls+'">'+yoyTxt+'</span>'+
+      '</div>'+
+      '<div class="tr-nums">'+
+        '<span class="tr-exp">수출 <b>$'+fmtUsdShort(it.exp)+'</b></span>'+
+        '<span class="tr-bal">무역수지 <b class="'+((it.balance||0)>=0?'pos':'neg')+'">$'+fmtUsdShort(Math.abs(it.balance||0))+((it.balance||0)>=0?'':' 적자')+'</b></span>'+
+      '</div>'+
+      (tops?'<div class="tr-ctys">'+tops+'</div>':'')+
+      (stks?'<div class="tr-stks"><span class="tr-stks-k">관련</span>'+stks+'</div>':'')+
+      '</div>';
+  }).join("");
+  body='<div class="tr-period">📅 <b>'+esc(f.period||'')+'</b> 기준 · 수출액 큰 순</div>'+
+    rows+
+    '<div class="tr-note">'+esc(f.note||'')+'</div>'+
+    '<div class="policy-attr">'+esc(f.attribution||'관세청 수출입무역통계')+'</div>';
+}
+var mini=state.tradeMin?' ce-min':'';
+var pos=state.tradePos;
+var style=(pos?('position:fixed;left:'+pos.x+'px;top:'+pos.y+'px;margin:0;transform:none;'):'');
+return '<div class="floatwrap'+mini+'"><div class="modal hot-float float-win tr-float'+mini+'" data-stop="1" data-poskey="tradePos" style="'+style+'">'+
+  '<div class="modal-h float-drag"><b>🚢 품목별 수출 동향</b>'+
+    '<span class="ce-winbtns">'+
+      '<button class="ce-winbtn" data-action="trade-min" title="'+(state.tradeMin?'확장':'축소')+'">'+(state.tradeMin?'⊡':'⊟')+'</button>'+
+      '<button class="ce-winbtn" data-action="trade-close" title="닫기">✕</button>'+
+    '</span></div>'+
+  (state.tradeMin?'':('<div class="feedbody hot-body tr-body">'+body+'</div>'))+
+  '</div></div>';
+}
+function fmtUsdShort(v){
+if(v==null) return '–';
+var a=Math.abs(v);
+if(a>=1e8) return (v/1e8).toFixed(1)+'억';
+if(a>=1e4) return (v/1e4).toFixed(0)+'만';
+return String(Math.round(v));
 }
 function vsHelpModalHTML(){
 if(!state.vsHelpOpen) return '';
@@ -4159,6 +4255,7 @@ corpEventsModalHTML()+
 hotDiscModalHTML()+
 financeModalHTML()+
 chatFloatHTML()+
+tradeModalHTML()+
 vsHelpModalHTML()+
 ipoModalHTML()+
 stockDetailHTML()+
@@ -5322,6 +5419,27 @@ else if(a==="fin-share"){
         }).catch(function(){ shareFallback(txt); });
       } else { shareFallback(txt); }
     }catch(err){ shareFallback(txt); }
+  }
+  return;
+}
+else if(a==="trade"){
+  state.tradeOpen=true; state.tradeMin=false; render();
+  if(!state.tradeData){
+    getJSON("/api/trade/items").then(function(j){ state.tradeData=j; if(state.tradeOpen) render(); })
+      .catch(function(){ state.tradeData={error:"수출입 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."}; if(state.tradeOpen) render(); });
+  }
+}
+else if(a==="trade-close"){ state.tradeOpen=false; render(); }
+else if(a==="trade-min"){ state.tradeMin=!state.tradeMin; render(); }
+else if(a==="tr-stock"){
+  // 수출 품목의 관련 종목 → 검색해서 상세 열기
+  var snm=t.getAttribute("data-name")||"";
+  if(snm){
+    getJSON("/api/stock_search?q="+encodeURIComponent(snm)+"&limit=1").then(function(j){
+      var r=(j&&j.results&&j.results[0]);
+      if(r){ state.stockOpen=true; state.stockMin=false; state.stockSym=r.symbol; state.stockName=r.name;
+        state.stockDetail=null; state.stockFilter=""; render(); loadStockDetail(r.symbol); }
+    }).catch(function(){});
   }
   return;
 }

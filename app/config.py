@@ -128,6 +128,9 @@ class Config:
     # 금융위원회 주식시세정보 API 키(data.go.kr) — 종가·시가총액(PER/PBR 계산용).
     # 이용허락범위 제한 없음(상업 이용 가능), 무료, 전일 종가 기준.
     stock_price_key: str = os.getenv("STOCK_PRICE_API_KEY", "").strip()
+    # 관세청 품목별 수출입실적 API 키(data.go.kr). 없으면 DATA_GO_KR_KEY 를 사용.
+    # 이용허락범위 제한 없음(상업 가능), 무료, 월 단위 데이터.
+    trade_key: str = os.getenv("TRADE_API_KEY", "").strip()
     # 한국수출입은행 환율 API 키(선택). oapi.koreaexim.go.kr 무료 발급.
     exim_key: str = os.getenv("EXIM_API_KEY", "")
 
