@@ -17,7 +17,7 @@ from typing import Any, Optional
 
 from app.llm import explain as explain_mod
 
-BUILD_VERSION = "2026.07.05-tradediag2"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
+BUILD_VERSION = "2026.07.05-tradefix1"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
 
 
 def _rsi_series(values: list, period: int = 14) -> list:
@@ -1600,7 +1600,8 @@ def register_routes(app: Any, ctx: Any) -> None:
         prev_ym = f"{ty-1:04d}{tm:02d}"     # 전년 동월
 
         def _fetch_item(it):
-            """한 품목: 주요국 합산(당월 + 전년동월)."""
+            """한 품목: 주요국 합산(당월 + 전년동월).
+            ※ API가 '조회기간 1년 이내'만 허용 → 당월/전년동월을 각각 따로 조회."""
             hs = it["hs"]
             cur_exp = 0.0
             prev_exp = 0.0
@@ -1608,25 +1609,26 @@ def register_routes(app: Any, ctx: Any) -> None:
             by_country = []
             got = False
             for c in TRADE_COUNTRIES:
-                try:
-                    rows = prov.item_trade(hs, c["cd"], prev_ym, cur_ym)
-                except Exception:
-                    continue
-                if not rows:
-                    continue
-                got = True
                 ce = 0.0
                 pe = 0.0
                 ci = 0.0
-                for r in rows:
-                    ym = (r.get("year") or "").replace(".", "")
-                    e = r.get("exp_dlr") or 0.0
-                    i = r.get("imp_dlr") or 0.0
-                    if ym == cur_ym:
-                        ce += e
-                        ci += i
-                    elif ym == prev_ym:
-                        pe += e
+                # 1) 당월
+                try:
+                    rows_cur = prov.item_trade(hs, c["cd"], cur_ym, cur_ym)
+                except Exception:
+                    rows_cur = []
+                for r in rows_cur:
+                    ce += (r.get("exp_dlr") or 0.0)
+                    ci += (r.get("imp_dlr") or 0.0)
+                # 2) 전년 동월(증감 계산용)
+                try:
+                    rows_prev = prov.item_trade(hs, c["cd"], prev_ym, prev_ym)
+                except Exception:
+                    rows_prev = []
+                for r in rows_prev:
+                    pe += (r.get("exp_dlr") or 0.0)
+                if rows_cur or rows_prev:
+                    got = True
                 cur_exp += ce
                 prev_exp += pe
                 cur_imp += ci
@@ -1649,7 +1651,8 @@ def register_routes(app: Any, ctx: Any) -> None:
         err = None
         try:
             from concurrent.futures import ThreadPoolExecutor
-            with ThreadPoolExecutor(max_workers=4) as ex:
+            # 품목당 국가×2회 호출 → 병렬 확대로 대기 단축
+            with ThreadPoolExecutor(max_workers=6) as ex:
                 for r in ex.map(_fetch_item, TRADE_ITEMS):
                     if r:
                         results.append(r)
@@ -1671,15 +1674,14 @@ def register_routes(app: Any, ctx: Any) -> None:
             if le:
                 out["reason"] = str(le)
             raw = (getattr(prov, "last_raw", "") or "")
-            if "403" in str(le or ""):
-                out["reason"] = ("이 API에 대한 활용신청이 아직 완료되지 않았습니다(HTTP 403). "
+            if "403" in str(le or "") or "SERVICE_KEY_IS_NOT_REGISTERED" in raw:
+                out["reason"] = ("이 API에 대한 활용신청이 아직 완료되지 않았습니다(403). "
                                  "공공데이터포털에서 '관세청_품목별 국가별 수출입실적'을 "
                                  "활용신청하면 몇 분 뒤부터 사용할 수 있습니다.")
-            elif "SERVICE_KEY_IS_NOT_REGISTERED" in raw:
-                out["reason"] = ("이 API에 활용신청이 되어 있지 않습니다. 공공데이터포털에서 "
-                                 "'관세청_품목별 국가별 수출입실적' 활용신청을 해주세요.")
             elif "LIMITED_NUMBER_OF_SERVICE_REQUESTS" in raw:
                 out["reason"] = "일일 호출 한도를 초과했습니다. 잠시 후 다시 시도하세요."
+            elif le:
+                out["reason"] = str(le)   # 실제 API 오류 그대로(추측 금지)
         _trade_cache["data"] = out
         _trade_cache["at"] = now_t
         return out
@@ -1707,9 +1709,10 @@ def register_routes(app: Any, ctx: Any) -> None:
             ty -= 1
         cur = f"{ty:04d}{tm:02d}"
         prv = f"{ty-1:04d}{tm:02d}"
-        out["query"] = {"hsSgn": hs, "cntyCd": cty, "strtYymm": prv, "endYymm": cur}
+        out["query"] = {"hsSgn": hs, "cntyCd": cty, "strtYymm": cur, "endYymm": cur,
+                        "note": "당월 1개월만 조회(API 제약: 조회기간 1년 이내)"}
         try:
-            rows = prov.item_trade(hs, cty, prv, cur)
+            rows = prov.item_trade(hs, cty, cur, cur)
             out["rows"] = len(rows)
             out["sample"] = rows[:2]
         except Exception as e:
@@ -1731,6 +1734,9 @@ def register_routes(app: Any, ctx: Any) -> None:
             hints.append("이미 신청했다면: 마이페이지 → 오픈API → 개발계정에서 "
                          "'승인' 상태인지, 그리고 그 API에 쓰는 키가 DATA_GO_KR_KEY 와 "
                          "같은 키인지 확인하세요.")
+        if "99" in le and "1년" in le:
+            hints.append("조회기간이 1년을 넘었습니다. 코드가 당월/전년동월을 각각 "
+                         "1개월씩 조회하도록 수정되어야 합니다(수정 완료된 버전인지 확인).")
         if "SERVICE_KEY_IS_NOT_REGISTERED" in raws:
             hints.append("키가 이 API에 등록되지 않았습니다 → 활용신청 필요.")
         if "LIMITED_NUMBER_OF_SERVICE_REQUESTS" in raws:
@@ -2058,6 +2064,16 @@ def register_routes(app: Any, ctx: Any) -> None:
         _finance_save_disk()
     try:
         ctx.finance_warmup = _finance_warmup
+    except Exception:
+        pass
+    # 수출입도 서버 시작 시 미리 로딩(첫 사용자 대기 없앰)
+    try:
+        def _trade_warmup():
+            try:
+                trade_items(refresh=False)
+            except Exception:
+                pass
+        ctx.trade_warmup = _trade_warmup
     except Exception:
         pass
 

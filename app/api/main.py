@@ -574,6 +574,13 @@ def create_app(cfg: Optional[Config] = None):
                         warm("all")    # 2) 이어서 전종목도 미리(사용자 대기 없앰)
                     except Exception as _e:
                         print(f"[재무 워밍업 all] 실패(무시): {_e}")
+                    # 3) 수출입(품목별) — 호출이 많아 미리 준비
+                    tw = getattr(ctx, "trade_warmup", None)
+                    if tw:
+                        try:
+                            tw()
+                        except Exception as _e:
+                            print(f"[수출입 워밍업] 실패(무시): {_e}")
                 _tw.Thread(target=_warm, daemon=True, name="finance-warmup").start()
             return
         if ctx.config.data_source == "mock":
