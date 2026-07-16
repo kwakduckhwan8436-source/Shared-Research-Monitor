@@ -17,7 +17,7 @@ from typing import Any, Optional
 
 from app.llm import explain as explain_mod
 
-BUILD_VERSION = "2026.07.05-ipodetail1"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
+BUILD_VERSION = "2026.07.05-ipocal1"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
 
 
 def _rsi_series(values: list, period: int = 14) -> list:
@@ -1549,6 +1549,25 @@ def register_routes(app: Any, ctx: Any) -> None:
 
     _ipo_cache = {"items": [], "at": 0.0, "err": None}
 
+    def _parse_sbd(sbd: str):
+        """청약기일 문자열 → (시작date, 종료date). 다양한 형식 대응.
+        예: '2026.07.13 ~ 2026.07.14', '2026-07-13~2026-07-14', '2026년 7월 13일'"""
+        import re as _re
+        from datetime import date as _date
+        if not sbd:
+            return (None, None)
+        # YYYY.MM.DD / YYYY-MM-DD / YYYY년 M월 D일 형태를 모두 추출
+        pats = _re.findall(r"(\d{4})\s*[.\-년]\s*(\d{1,2})\s*[.\-월]\s*(\d{1,2})", sbd)
+        ds = []
+        for y, m, d in pats:
+            try:
+                ds.append(_date(int(y), int(m), int(d)))
+            except ValueError:
+                continue
+        if not ds:
+            return (None, None)
+        return (min(ds), max(ds))
+
     @app.get("/api/feed/ipo")
     def feed_ipo(limit: int = 30) -> dict:
         """공모주(IPO) 일정 — DART 증권신고(지분증권) 공시. 제목·회사·링크만.
@@ -1562,7 +1581,7 @@ def register_routes(app: Any, ctx: Any) -> None:
         if not _ipo_cache["items"] or now_t - _ipo_cache["at"] > 1800:
             _ipo_cache["at"] = now_t
             try:
-                fetched = prov.recent_ipos(ctx.clock.now(), days=30)
+                fetched = prov.recent_ipos(ctx.clock.now(), days=60)
                 if fetched:
                     # ★ 청약일·주관사·공모가 상세 병합(estkRs.json) — 병렬 조회
                     def _enrich(it):
@@ -1584,7 +1603,7 @@ def register_routes(app: Any, ctx: Any) -> None:
                         return it
                     try:
                         from concurrent.futures import ThreadPoolExecutor
-                        head = fetched[:25]   # 상위 25건만 상세 조회(호출 절약)
+                        head = fetched[:40]   # 상위 40건 상세 조회(미래 청약 포착)
                         with ThreadPoolExecutor(max_workers=4) as ex:
                             list(ex.map(_enrich, head))
                     except Exception:
@@ -1595,14 +1614,52 @@ def register_routes(app: Any, ctx: Any) -> None:
                     _ipo_cache["err"] = getattr(prov, "last_disclosure_error", None)
             except Exception as e:
                 _ipo_cache["err"] = str(e)
-        items = _ipo_cache["items"][:limit]
+        # ★ 청약 상태 판정 + 청약일 기준 정렬(예정 → 진행중 → 마감)
+        today = ctx.clock.now().date()
+        all_items = []
+        for it in _ipo_cache["items"]:
+            det = it.get("detail") or {}
+            s, e = _parse_sbd(det.get("sbd", ""))
+            it2 = dict(it)
+            if s:
+                it2["sub_start"] = s.isoformat()
+                it2["sub_end"] = (e or s).isoformat()
+                dday = (s - today).days
+                it2["dday"] = dday
+                if today < s:
+                    it2["status"] = "upcoming"           # 청약 예정
+                    it2["status_label"] = ("D-%d" % dday) if dday > 0 else "내일"
+                elif today <= (e or s):
+                    it2["status"] = "open"               # 청약 진행중
+                    it2["status_label"] = "청약중"
+                else:
+                    it2["status"] = "closed"             # 마감
+                    it2["status_label"] = "마감"
+            else:
+                it2["status"] = "unknown"
+                it2["status_label"] = ""
+            all_items.append(it2)
+        # 정렬: 청약중 → 예정(가까운 순) → 일정미상 → 마감(최근 순)
+        def _sk(x):
+            st = x.get("status")
+            dd = x.get("dday")
+            if st == "open":
+                return (0, 0)
+            if st == "upcoming":
+                return (1, dd if dd is not None else 999)
+            if st == "unknown":
+                return (2, 0)
+            return (3, -(dd if dd is not None else 0))
+        all_items.sort(key=_sk)
+        upcoming_n = sum(1 for x in all_items if x.get("status") in ("upcoming", "open"))
+        items = all_items[:limit]
         out = {"items": items, "ts": ctx.clock.now().isoformat(),
-               "count": len(_ipo_cache["items"]),
+               "count": len(all_items), "upcoming": upcoming_n,
                "attribution": "금융감독원 전자공시(DART) 증권신고(지분증권) · 청약일정은 원문 확인 · 투자권유 아님"}
         if not items and _ipo_cache["err"]:
             out["error"] = "공모주 정보를 불러오지 못했습니다: " + str(_ipo_cache["err"])
         elif not items:
-            out["note"] = "최근 30일 내 신규 공모(증권신고) 공시가 없습니다."
+            out["note"] = "최근 60일 내 신규 공모(증권신고) 공시가 없습니다."
         return out
 
     _finance_cache = {}   # scope별: {scope: {rows, at, year, err}}
@@ -2467,6 +2524,42 @@ def register_routes(app: Any, ctx: Any) -> None:
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
+    def _ipo_calendar_events(year: int, month: int) -> list:
+        """해당 월의 공모주 청약일을 캘린더 이벤트로.
+        증권신고서(estkRs) 청약기일 — 추측이 아니라 공시된 확정 일정.
+        _ipo_cache 를 재사용(별도 호출 없음)."""
+        out = []
+        items = _ipo_cache.get("items") or []
+        if not items:
+            return out
+        pref_y, pref_m = year, month
+        seen = set()
+        for it in items:
+            det = it.get("detail") or {}
+            s, e = _parse_sbd(det.get("sbd", ""))
+            if not s:
+                continue
+            corp = (it.get("corp") or "").strip()
+            if not corp:
+                continue
+            # 청약 시작일 · 종료일을 각각 이벤트로(같은 달만)
+            for d, kind in ((s, "시작"), (e or s, "종료")):
+                if d.year != pref_y or d.month != pref_m:
+                    continue
+                key = (d.isoformat(), corp, kind)
+                if key in seen:
+                    continue
+                seen.add(key)
+                # 시작·종료가 같은 날이면 하나만
+                if kind == "종료" and e and e == s:
+                    continue
+                price = det.get("slprc") or ""
+                label = f"🎈 {corp} 공모청약 {kind}"
+                if price and kind == "시작":
+                    label += f" ({price}원)"
+                out.append({"date": d.isoformat(), "type": "ipo", "label": label[:80]})
+        return out
+
     @app.get("/api/calendar")
     def market_calendar(year: int = 0, month: int = 0) -> dict:
         """증시 캘린더 — 휴장일·만기일·배당락(참고) + 운영자 등록 일정.
@@ -2492,6 +2585,19 @@ def register_routes(app: Any, ctx: Any) -> None:
         # DART 공시 이벤트(공개 데이터) — 실적·배당·주총·증자·공모 등
         try:
             events.extend(_dart_calendar_events(y, m))
+        except Exception:
+            pass
+        # ★ 공모주 청약일(증권신고서 확정 일정) — 미래 일정도 표시
+        try:
+            if not (_ipo_cache.get("items") or []):
+                # 캐시가 비었으면 한 번 채움(30분 캐시라 부담 적음)
+                prov_i = getattr(ctx, "dart", None)
+                if prov_i is not None and getattr(prov_i, "api_key", ""):
+                    try:
+                        feed_ipo(limit=60)
+                    except Exception:
+                        pass
+            events.extend(_ipo_calendar_events(y, m))
         except Exception:
             pass
         events.sort(key=lambda e: e["date"])
