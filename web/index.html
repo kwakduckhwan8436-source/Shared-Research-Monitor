@@ -412,12 +412,9 @@ gap:3px;padding:6px 0;cursor:pointer;color:var(--muted);min-height:48px}
 .sd-news-row{padding:10px 4px;font-size:13px}
 .sd-fbtn{font-size:12px;padding:5px 11px;min-height:32px}
 /* 재무 순위표: 폰에서 터치·가독성 */
-.fin-sbtn{font-size:12px;padding:6px 12px;min-height:34px}
-.fin-scopebar{gap:5px;padding:4px 0}
 .fin-table td{padding:11px 7px;font-size:12.5px}
 .fin-table thead th{padding:9px 7px;font-size:11px}
 .fin-nm b{font-size:13px}
-.fin-expand{font-size:12px;padding:6px 11px;min-height:34px}
 /* 스크리닝 모달: 폰에서 크게 */
 .scr-preset{font-size:12.5px;padding:8px 14px;min-height:38px}
 .scr-in{font-size:15px;padding:10px 11px;min-height:44px}
@@ -467,6 +464,38 @@ gap:1px;background:var(--line);min-height:0;overflow:hidden}
 .fin-float{width:min(880px,94vw)}
 .fin-body{padding:0}
 .fin-toolbar{display:flex;align-items:center;gap:8px;padding:7px 10px;border-bottom:1px solid var(--line);background:var(--panel2)}
+/* ★ 프리셋 바 — 사이트 핵심 기능(원클릭 종목 발굴) */
+.fin-presets{display:flex;flex-wrap:wrap;gap:6px;padding:10px 12px;
+  background:linear-gradient(180deg,rgba(65,199,176,.10),rgba(65,199,176,.02));
+  border-bottom:1px solid var(--line)}
+.fin-pbtn{font-size:12px;font-weight:600;padding:6px 12px;border-radius:14px;
+  border:1px solid var(--line2);background:var(--panel);color:var(--ink2);
+  cursor:pointer;white-space:nowrap;transition:background .12s,color .12s,border-color .12s,transform .06s}
+.fin-pbtn:hover{border-color:var(--teal);color:var(--ink)}
+.fin-pbtn:active{transform:scale(.94)}
+.fin-pbtn.on{background:var(--teal);color:#04211d;border-color:var(--teal);font-weight:700}
+.fin-pbtn-more{margin-left:auto;font-weight:500;color:var(--dim)}
+.fin-preset-info{padding:6px 12px;font-size:11.5px;color:var(--ink2);
+  background:var(--panel2);border-bottom:1px solid var(--line)}
+.fin-preset-info b{color:var(--teal)}
+/* 깔끔한 재무 툴바 */
+.fin-bar{display:flex;flex-direction:column;gap:7px;padding:9px 12px;border-bottom:1px solid var(--line);background:var(--panel2)}
+.fin-bar-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.fin-seg{display:inline-flex;border:1px solid var(--line2);border-radius:8px;overflow:hidden;background:var(--panel3)}
+.fin-segbtn{font-size:11.5px;padding:5px 11px;border:none;background:transparent;color:var(--ink2);
+  cursor:pointer;white-space:nowrap;transition:background .1s,color .1s;border-right:1px solid var(--line2)}
+.fin-segbtn:last-child{border-right:none}
+.fin-segbtn:hover{color:var(--ink);background:var(--panel2)}
+.fin-segbtn.on{background:var(--teal);color:#04211d;font-weight:700}
+.fin-sortsel{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:var(--dim)}
+.fin-sortsel select{font-size:12px;padding:5px 9px;border:1px solid var(--line2);border-radius:8px;
+  background:var(--panel3);color:var(--ink);cursor:pointer;font-family:inherit}
+.fin-sortsel select:focus{outline:none;border-color:var(--teal)}
+.fin-iconbtn{font-size:14px;width:32px;height:32px;border:1px solid var(--line2);border-radius:8px;
+  background:var(--panel3);color:var(--ink2);cursor:pointer;transition:background .1s,transform .06s;
+  display:inline-flex;align-items:center;justify-content:center}
+.fin-iconbtn:hover{background:var(--teal);border-color:var(--teal)}
+.fin-iconbtn:active{transform:scale(.92)}
 .fin-row-lbl{font-size:11px;color:var(--dim);flex:none;width:34px}
 .fin-btns{display:flex;flex-wrap:wrap;gap:5px}
 .fin-sbtn{font-size:11px;padding:3px 9px;border-radius:11px;border:1px solid var(--line2);background:var(--panel3);color:var(--ink2);cursor:pointer;white-space:nowrap;transition:background .1s,color .1s,border-color .1s,transform .06s}
@@ -479,10 +508,8 @@ gap:1px;background:var(--line);min-height:0;overflow:hidden}
 .fin-table thead th{position:sticky;top:0;background:var(--panel2);color:var(--muted);font-weight:600;
   padding:8px;font-size:11px;letter-spacing:.02em;z-index:1;border-bottom:1px solid var(--line2)}
 .fin-table tbody tr:nth-child(even){background:rgba(255,255,255,.012)}
-.fin-nm b{font-weight:600}
-  padding:7px 8px;text-align:right;border-bottom:1px solid var(--line2);white-space:nowrap;font-size:11px}
+.fin-table td{padding:7px 8px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap;font-size:11.5px}
 .fin-table thead th:nth-child(1),.fin-table thead th:nth-child(2){text-align:left}
-.fin-table td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
 .fin-table tbody tr:hover{background:var(--panel3)}
 .fin-rank{color:var(--dim);font-size:11px;text-align:left !important;width:26px}
 .fin-nm{text-align:left !important}
@@ -502,22 +529,20 @@ gap:1px;background:var(--line);min-height:0;overflow:hidden}
 @media (max-width:640px){ .welcome-banner{flex-direction:column;align-items:flex-start;gap:8px} }
 @media (max-width:760px){
   .fin-table .mob-hide{display:none}
-  .fin-table{font-size:12px}
-  .fin-table td{padding:8px 6px}
-  .fin-table thead th{padding:8px 6px;font-size:11px}
-  .fin-nm b{font-size:12px}
-  .fin-scopebar{flex-wrap:wrap;gap:4px}
-  .fin-sbtn{font-size:11px;padding:4px 10px}
+  .fin-table{font-size:12.5px}
+  .fin-table td{padding:11px 7px}
+  .fin-table thead th{padding:9px 7px;font-size:11px}
+  .fin-nm b{font-size:13px}
+  .fin-bar{gap:8px;padding:10px 12px}
+  .fin-bar-row{gap:6px}
+  .fin-segbtn{font-size:12px;padding:7px 12px}
+  .fin-sortsel select{font-size:13px;padding:7px 10px}
+  .fin-iconbtn{width:36px;height:36px;font-size:15px}
 }
 .fin-panel-body{padding:0;display:flex;flex-direction:column;min-height:0;overflow:hidden}
 .fin-panel-body .fin-tablewrap{flex:1;min-height:0}
-.fin-panel-body .fin-toolbar{position:sticky;top:0;z-index:2}
-.fin-expand{font-size:11px;padding:3px 9px;border-radius:11px;border:1px solid var(--line2);
-  background:var(--panel3);color:var(--ink2);cursor:pointer;white-space:nowrap;margin-left:auto}
-.fin-expand:hover{background:var(--teal);color:#04211d;border-color:var(--teal)}
-.fin-scopebar{gap:6px}
-.fin-cnt{margin-left:auto;font-size:11px;color:var(--dim)}
-.fin-sep{color:var(--line2);margin:0 2px}
+.fin-panel-body .fin-bar{position:sticky;top:0;z-index:2}
+.fin-cnt{font-size:11px;color:var(--dim);margin-right:auto}
 .btn-more{font-weight:600}
 .more-overlay{position:fixed;inset:0;z-index:998}
 .more-menu{position:fixed;top:52px;right:16px;z-index:999;background:var(--panel);
@@ -1555,7 +1580,7 @@ cal: null, calY: 0, calM: 0, calFilter: {}, calAdminOpen: false, calAdminList: n
 glossaryOpen: false, glossary: null, glossQ: "", glossCat: "전체", dguideOpen: false, dguide: null,
 startOpen: false, startGuide: null, startTab: "guide",
 stock: null, stockLoading: false, live: null, newsTs: "",
-feedDisc: null, feedNews: null, feedReports: null, feedPolicy: null, feedHot: null, feedIpo: null, ipoOpen: false, ipoMin: false, ipoPos: null, policyFilter: "all", hotOpen: false, hotMin: false, hotPos: null, finOpen: false, finMin: false, finPos: null, finRank: null, finSort: "revenue", finSector: "", finSectors: null, finScope: "major", finMarket: "", finPeriod: "annual", finLoading: false, moreOpen: false, stockOpen: false, stockMin: false, stockPos: null, stockSym: "", stockName: "", stockDetail: null, stockFilter: "", screenOpen: false, screenCond: {}, sectorAvg: null, welcomeHidden: false, searchQ: "", searchOpen: false, searchResults: [], chatOpen: (typeof window!=="undefined" && window.innerWidth>760), chatMin: false, chatPos: null, modal: false, reports: null, reportsLoading: false,
+feedDisc: null, feedNews: null, feedReports: null, feedPolicy: null, feedHot: null, feedIpo: null, ipoOpen: false, ipoMin: false, ipoPos: null, policyFilter: "all", hotOpen: false, hotMin: false, hotPos: null, finOpen: false, finMin: false, finPos: null, finRank: null, finSort: "revenue", finSector: "", finSectors: null, finScope: "major", finMarket: "", finPeriod: "annual", finLoading: false, finPreset: "", moreOpen: false, stockOpen: false, stockMin: false, stockPos: null, stockSym: "", stockName: "", stockDetail: null, stockFilter: "", screenOpen: false, screenCond: {}, sectorAvg: null, welcomeHidden: false, searchQ: "", searchOpen: false, searchResults: [], chatOpen: (typeof window!=="undefined" && window.innerWidth>760), chatMin: false, chatPos: null, modal: false, reports: null, reportsLoading: false,
 chat: [], chatLastId: 0, chatUser: "익명", reacts: {}, indices: null, fx: null, corpOpen: false, corpTab: "dividend", corpData: null, corpMin: false, corpPos: null, corpQuery: "", calcOpen: false, calcTab: "yield", calcVals: {}, calcMin: false, calcPos: null, calcW: 520, recsCache: {},
 notice: "", emojiOpen: false, briefing: null, briefingOpen: false, presence: {site:0,chat:0},
 mflowOpen: false, mflow: null, mflowMkt: "KOSPI",
@@ -1628,7 +1653,7 @@ var cal = d && d.weights_calibrated;
 var ms=marketStatus();
 return '<div class="top">'+
 '<div class="brand">모두의 <b>리서치 모니터</b>'+
-'<small>공시·뉴스·재무를 한눈에 · 투자판단과 책임은 본인에게 있습니다</small></div>'+
+'<small>조건으로 저평가 우량주 찾기 · 공시·뉴스·재무 한눈에 · 투자판단과 책임은 본인에게 있습니다</small></div>'+
 '<div class="adslot" id="adslot">'+adHTML()+'</div>'+
 '<div class="top-meta">'+
 '<div class="topsearch"><input class="topsearch-in" id="topsearch" type="text" placeholder="🔍 종목 검색 (예: 삼성전자)" autocomplete="off" value="'+esc(state.searchQ||"")+'">'+searchResultsHTML()+'</div>'+
@@ -1798,6 +1823,27 @@ var FIN_SORTS=[
   {k:"revenue_yoy",label:"매출성장"},
   {k:"debt_ratio",label:"부채비율↓"}
 ];
+var SCREEN_PRESETS=[
+  {k:"value", label:"💎 저평가주", desc:"PER 10↓ · PBR 1.5↓", cond:{per_max:10, pbr_max:1.5}},
+  {k:"quality", label:"⭐ 우량주", desc:"ROE 15↑ · 부채 100↓", cond:{roe_min:15, debt_max:100}},
+  {k:"growth", label:"🚀 고성장주", desc:"매출성장 20↑ · 영업이익률 10↑", cond:{growth_min:20, opm_min:10}},
+  {k:"dividend", label:"🛡️ 안정주", desc:"부채 50↓ · 영업이익률 5↑", cond:{debt_max:50, opm_min:5}},
+  {k:"buffett", label:"🎯 가치+우량", desc:"PER 15↓ · ROE 15↑ · 부채 100↓", cond:{per_max:15, roe_min:15, debt_max:100}}
+];
+function applyScreenCond(rows, cond){
+if(!cond) return rows;
+return rows.filter(function(r){
+  for(var i=0;i<SCREEN_CONDS.length;i++){
+    var c=SCREEN_CONDS[i]; var lim=cond[c.k];
+    if(lim==null||lim==="") continue;
+    var v=r[c.field];
+    if(v==null) return false;
+    if(c.dir==="max" && v>lim) return false;
+    if(c.dir==="min" && v<lim) return false;
+  }
+  return true;
+});
+}
 function finSortRows(rows, sortKey){
 sortKey=sortKey||"revenue";
 var asc=(sortKey==="debt_ratio"||sortKey==="per"||sortKey==="pbr"); // 낮을수록 좋은 지표
@@ -1816,7 +1862,7 @@ if(f===null && !state._finPanelLoading){
   }
   loadFinance();
 }
-var head='<div class="feedhead"><span class="feedtitle">📊 주요 기업 재무 순위</span>'+
+var head='<div class="feedhead"><span class="feedtitle">🎯 종목 발굴 · 재무 순위</span>'+
   presenceHTML()+
   '<span class="feedcount">'+(f&&f.rows?f.rows.length:0)+'개</span></div>';
 var body;
@@ -1835,11 +1881,16 @@ else if(!f.rows||!f.rows.length){
        '<button class="fin-retry" data-action="fin-retry">다시 시도</button></div>';
 }
 else {
-  var sortBar=FIN_SORTS.map(function(s){
-    return '<button class="fin-sbtn'+(state.finSort===s.k?" on":"")+'" data-action="fin-sort" data-k="'+s.k+'">'+s.label+'</button>';
-  }).join("");
   var baseRows=f.rows;
   if(state.finMarket){ baseRows=baseRows.filter(function(r){ return (r.market||"").toUpperCase()===state.finMarket; }); }
+  // ★ 프리셋(저평가주·우량주 등) 즉시 필터 — 사이트의 핵심 기능
+  var activePreset=null;
+  if(state.finPreset){
+    for(var pi2=0;pi2<SCREEN_PRESETS.length;pi2++){
+      if(SCREEN_PRESETS[pi2].k===state.finPreset){ activePreset=SCREEN_PRESETS[pi2]; break; }
+    }
+    if(activePreset){ baseRows=applyScreenCond(baseRows, activePreset.cond); }
+  }
   var sortedRows=finSortRows(baseRows, state.finSort);
   var rows=sortedRows.map(function(r,i){
     var opPos=(r.op_income!=null&&r.op_income>=0);
@@ -1865,21 +1916,42 @@ else {
         partialMsg='<div class="fin-partial">일부 종목이 로드되지 않았습니다('+cnt+'/'+cm+'). "다시 시도"를 누르면 더 채워질 수 있습니다. <button class="fin-retry-sm" data-action="fin-retry">다시 시도</button></div>';
       }
     }
-    body='<div class="fin-toolbar"><div class="fin-btns">'+sortBar+'</div>'+
-      '<button class="fin-expand" data-action="screen-open" title="조건 검색">🔍 검색</button>'+
-      '<button class="fin-expand" data-action="finance" title="크게 보기">⛶ 크게</button></div>'+
-    '<div class="fin-toolbar fin-scopebar">'+
-      '<button class="fin-sbtn'+(state.finScope==="major"?" on":"")+'" data-action="fin-scope" data-scope="major">대표</button>'+
-      '<button class="fin-sbtn'+(state.finScope==="wide"?" on":"")+'" data-action="fin-scope" data-scope="wide">시총상위</button>'+
-      '<button class="fin-sbtn'+(state.finScope==="all"?" on":"")+'" data-action="fin-scope" data-scope="all">전종목</button>'+
-      '<span class="fin-sep">|</span>'+
-      '<button class="fin-sbtn'+(!state.finMarket?" on":"")+'" data-action="fin-market" data-mkt="">전체</button>'+
-      '<button class="fin-sbtn'+(state.finMarket==="KOSPI"?" on":"")+'" data-action="fin-market" data-mkt="KOSPI">코스피</button>'+
-      '<button class="fin-sbtn'+(state.finMarket==="KOSDAQ"?" on":"")+'" data-action="fin-market" data-mkt="KOSDAQ">코스닥</button>'+
-      '<span class="fin-sep">|</span>'+
-      '<button class="fin-sbtn'+(state.finPeriod!=="latest"?" on":"")+'" data-action="fin-period" data-per="annual">연간</button>'+
-      '<button class="fin-sbtn'+(state.finPeriod==="latest"?" on":"")+'" data-action="fin-period" data-per="latest">최신</button>'+
-      '<span class="fin-cnt">'+(rows?sortedRows.length:0)+'개</span>'+
+    // 정렬 드롭다운 옵션
+    var sortOpts=FIN_SORTS.map(function(s){
+      return '<option value="'+s.k+'"'+(state.finSort===s.k?' selected':'')+'>'+s.label+'</option>';
+    }).join("");
+    // ★ 프리셋 바 — 사이트의 메인 기능(원클릭 종목 발굴)
+    var presetBar='<div class="fin-presets">'+
+      '<button class="fin-pbtn'+(!state.finPreset?" on":"")+'" data-action="fin-preset" data-pk="">전체</button>'+
+      SCREEN_PRESETS.map(function(p){
+        return '<button class="fin-pbtn'+(state.finPreset===p.k?" on":"")+'" data-action="fin-preset" data-pk="'+p.k+'" title="'+esc(p.desc)+'">'+esc(p.label)+'</button>';
+      }).join("")+
+      '<button class="fin-pbtn fin-pbtn-more" data-action="screen-open" title="직접 조건 설정">⚙ 직접설정</button>'+
+      '</div>'+
+      (activePreset?('<div class="fin-preset-info"><b>'+esc(activePreset.label)+'</b> · '+esc(activePreset.desc)+' · <b>'+sortedRows.length+'개</b> 종목</div>'):'');
+    body=presetBar+'<div class="fin-bar">'+
+      '<div class="fin-bar-row">'+
+        '<div class="fin-seg" role="group">'+
+          '<button class="fin-segbtn'+(state.finScope==="major"?" on":"")+'" data-action="fin-scope" data-scope="major">대표</button>'+
+          '<button class="fin-segbtn'+(state.finScope==="wide"?" on":"")+'" data-action="fin-scope" data-scope="wide">시총상위</button>'+
+          '<button class="fin-segbtn'+(state.finScope==="all"?" on":"")+'" data-action="fin-scope" data-scope="all">전종목</button>'+
+        '</div>'+
+        '<div class="fin-seg" role="group">'+
+          '<button class="fin-segbtn'+(!state.finMarket?" on":"")+'" data-action="fin-market" data-mkt="">전체</button>'+
+          '<button class="fin-segbtn'+(state.finMarket==="KOSPI"?" on":"")+'" data-action="fin-market" data-mkt="KOSPI">코스피</button>'+
+          '<button class="fin-segbtn'+(state.finMarket==="KOSDAQ"?" on":"")+'" data-action="fin-market" data-mkt="KOSDAQ">코스닥</button>'+
+        '</div>'+
+        '<div class="fin-seg" role="group">'+
+          '<button class="fin-segbtn'+(state.finPeriod!=="latest"?" on":"")+'" data-action="fin-period" data-per="annual">연간</button>'+
+          '<button class="fin-segbtn'+(state.finPeriod==="latest"?" on":"")+'" data-action="fin-period" data-per="latest">최신</button>'+
+        '</div>'+
+      '</div>'+
+      '<div class="fin-bar-row">'+
+        '<label class="fin-sortsel"><span>정렬</span><select data-action="fin-sortsel">'+sortOpts+'</select></label>'+
+        '<span class="fin-cnt">'+(rows?sortedRows.length:0)+'개</span>'+
+        '<button class="fin-iconbtn" data-action="screen-open" title="조건 검색">🔍</button>'+
+        '<button class="fin-iconbtn" data-action="finance" title="크게 보기">⛶</button>'+
+      '</div>'+
     '</div>'+
     '<div class="fin-tablewrap"><table class="fin-table"><thead><tr>'+
       '<th>#</th><th>기업</th><th>매출</th><th class="mob-hide">영업익</th><th class="mob-hide">영업%</th><th>ROE</th><th>PER</th><th class="mob-hide">PBR</th><th class="mob-hide">매출성장</th>'+
@@ -1888,13 +1960,6 @@ else {
 }
 return head+'<div class="feedbody fin-panel-body">'+body+'</div>';
 }
-var SCREEN_PRESETS=[
-  {k:"value", label:"💎 저평가주", cond:{per_max:10, pbr_max:1.5}},
-  {k:"quality", label:"⭐ 우량주", cond:{roe_min:15, debt_max:100}},
-  {k:"growth", label:"🚀 고성장주", cond:{growth_min:20, opm_min:10}},
-  {k:"dividend", label:"🛡️ 안정주", cond:{debt_max:50, opm_min:5}},
-  {k:"buffett", label:"🎯 가치+우량", cond:{per_max:15, roe_min:15, debt_max:100}}
-];
 var SCREEN_CONDS=[
   {k:"per_max",label:"PER 이하",field:"per",dir:"max",ph:"예: 10"},
   {k:"pbr_max",label:"PBR 이하",field:"pbr",dir:"max",ph:"예: 1"},
@@ -3711,9 +3776,8 @@ return '<div class="d-head"><div class="d-title"><span class="nm">'+esc(rec.name
 function welcomeBannerHTML(){
 if(state.welcomeHidden) return '';
 return '<div class="welcome-banner">'+
-  '<div class="wb-txt"><b>👋 처음 오셨나요?</b> 이 사이트는 <b>공시·뉴스·재무를 한눈에</b> 보는 리서치 도구입니다. '+
-  '오른쪽 <b>📊 재무 순위</b>에서 종목을 클릭하면 그 회사의 재무·공시·뉴스가 모여요. '+
-  '상단 <b>🔍 검색</b>으로 종목을 바로 찾을 수도 있습니다.</div>'+
+  '<div class="wb-txt"><b>👋 처음 오셨나요?</b> <b>💎 저평가주</b> · <b>⭐ 우량주</b> 버튼 하나로 '+
+  '전종목에서 조건에 맞는 기업을 즉시 찾아드립니다. 종목을 클릭하면 재무·공시·뉴스가 한 화면에 모여요.</div>'+
   '<button class="wb-close" data-action="welcome-close">알겠어요 ✕</button>'+
   '</div>';
 }
@@ -4692,6 +4756,12 @@ if(el){ el.style.width=g.w+"px"; el.style.height=g.h+"px"; }
 }
 });
 document.addEventListener("mouseup",function(){ _winDrag=null; });
+document.addEventListener("change",function(e){
+if(e.target && e.target.getAttribute && e.target.getAttribute("data-action")==="fin-sortsel"){
+  state.finSort=e.target.value||"revenue";
+  patchFinancePanel(); if(state.finOpen) render();
+}
+});
 document.addEventListener("input",function(e){
 if(e.target && e.target.id==="topsearch"){
   state.searchQ=e.target.value;
@@ -4920,6 +4990,10 @@ else if(a==="fin-close"){ state.finOpen=false; render(); }
 else if(a==="fin-min"){ state.finMin=!state.finMin; render(); }
 else if(a==="fin-sort"){ state.finSort=t.getAttribute("data-k")||"revenue"; patchFinancePanel(); if(state.finOpen) render(); }
 else if(a==="fin-sector"){ state.finSector=t.getAttribute("data-sec")||""; loadFinance(); }
+else if(a==="fin-preset"){
+  state.finPreset=t.getAttribute("data-pk")||"";
+  patchFinancePanel(); if(state.finOpen) render();
+}
 else if(a==="fin-retry"){ state.finRank=null; loadFinance(true); }
 else if(a==="fin-scope"){ state.finScope=t.getAttribute("data-scope")||"major"; state.finRank=null; loadFinance(); }
 else if(a==="fin-market"){ state.finMarket=t.getAttribute("data-mkt")||""; patchFinancePanel(); if(state.finOpen) render(); }
