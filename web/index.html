@@ -412,6 +412,15 @@ gap:3px;padding:6px 0;cursor:pointer;color:var(--muted);min-height:48px}
 .sd-news-row{padding:10px 4px;font-size:13px}
 .sd-fbtn{font-size:12px;padding:5px 11px;min-height:32px}
 /* 재무 순위표: 폰에서 터치·가독성 */
+.fin-hero{padding:12px 12px 12px}
+.fin-hero-t{font-size:13.5px}
+.fin-hero-t b{font-size:15px}
+.fin-presets{gap:7px}
+.fin-pbtn{font-size:13px;padding:10px 14px;min-height:42px}
+.fin-pbtn-more{font-size:12px;padding:10px 12px}
+.fin-preset-info{padding:11px 12px}
+.fpi-help{font-size:12.5px}
+.fpi-btn{font-size:11px;padding:5px 11px;min-height:30px}
 .fin-table td{padding:11px 7px;font-size:12.5px}
 .fin-table thead th{padding:9px 7px;font-size:11px}
 .fin-nm b{font-size:13px}
@@ -464,20 +473,35 @@ gap:1px;background:var(--line);min-height:0;overflow:hidden}
 .fin-float{width:min(880px,94vw)}
 .fin-body{padding:0}
 .fin-toolbar{display:flex;align-items:center;gap:8px;padding:7px 10px;border-bottom:1px solid var(--line);background:var(--panel2)}
-/* ★ 프리셋 바 — 사이트 핵심 기능(원클릭 종목 발굴) */
-.fin-presets{display:flex;flex-wrap:wrap;gap:6px;padding:10px 12px;
-  background:linear-gradient(180deg,rgba(65,199,176,.10),rgba(65,199,176,.02));
-  border-bottom:1px solid var(--line)}
-.fin-pbtn{font-size:12px;font-weight:600;padding:6px 12px;border-radius:14px;
+/* ★★ 종목 발굴 히어로 — 사이트 메인 기능 */
+.fin-hero{padding:12px 12px 11px;
+  background:linear-gradient(180deg,rgba(65,199,176,.16),rgba(65,199,176,.04));
+  border-bottom:1px solid rgba(65,199,176,.28)}
+.fin-hero-t{font-size:13px;color:var(--ink);margin-bottom:9px;display:flex;align-items:baseline;gap:7px;flex-wrap:wrap}
+.fin-hero-t b{font-size:14px;font-weight:800}
+.fin-hero-sub{font-size:11px;color:var(--muted);font-weight:400}
+.fin-presets{display:flex;flex-wrap:wrap;gap:6px}
+.fin-pbtn{font-size:12.5px;font-weight:700;padding:8px 13px;border-radius:16px;
   border:1px solid var(--line2);background:var(--panel);color:var(--ink2);
   cursor:pointer;white-space:nowrap;transition:background .12s,color .12s,border-color .12s,transform .06s}
-.fin-pbtn:hover{border-color:var(--teal);color:var(--ink)}
+.fin-pbtn:hover{border-color:var(--teal);color:var(--ink);background:var(--panel3)}
 .fin-pbtn:active{transform:scale(.94)}
-.fin-pbtn.on{background:var(--teal);color:#04211d;border-color:var(--teal);font-weight:700}
-.fin-pbtn-more{margin-left:auto;font-weight:500;color:var(--dim)}
-.fin-preset-info{padding:6px 12px;font-size:11.5px;color:var(--ink2);
-  background:var(--panel2);border-bottom:1px solid var(--line)}
-.fin-preset-info b{color:var(--teal)}
+.fin-pbtn.on{background:var(--teal);color:#04211d;border-color:var(--teal);
+  box-shadow:0 2px 10px rgba(65,199,176,.35)}
+.fin-pbtn-all{font-weight:500}
+.fin-pbtn-more{font-weight:500;color:var(--dim);font-size:11.5px;padding:8px 11px}
+/* 선택된 프리셋 안내(초보자용) */
+.fin-preset-info{padding:9px 12px;background:var(--panel2);border-bottom:1px solid var(--line);
+  display:flex;flex-direction:column;gap:4px}
+.fpi-top{display:flex;align-items:baseline;gap:8px}
+.fpi-top b{font-size:13px;color:var(--teal)}
+.fpi-cnt{font-size:12px;font-weight:700;color:var(--ink)}
+.fpi-help{font-size:11.5px;color:var(--ink2);line-height:1.5}
+.fpi-cond{font-size:10.5px;color:var(--dim)}
+.fpi-tip{font-size:11px;color:var(--amber);margin-top:2px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.fpi-btn{font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:10px;border:1px solid var(--amber);
+  background:transparent;color:var(--amber);cursor:pointer}
+.fpi-btn:hover{background:var(--amber);color:#2a1e08}
 /* 깔끔한 재무 툴바 */
 .fin-bar{display:flex;flex-direction:column;gap:7px;padding:9px 12px;border-bottom:1px solid var(--line);background:var(--panel2)}
 .fin-bar-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
@@ -1815,20 +1839,35 @@ function fmtNum1(v){ return v==null?'–':v.toFixed(1); }
 function fmtNum2(v){ return v==null?'–':v.toFixed(2); }
 
 var FIN_SORTS=[
-  {k:"revenue",label:"매출"},
-  {k:"op_margin",label:"영업이익률"},
-  {k:"roe",label:"ROE"},
-  {k:"per",label:"PER↓"},
-  {k:"pbr",label:"PBR↓"},
-  {k:"revenue_yoy",label:"매출성장"},
-  {k:"debt_ratio",label:"부채비율↓"}
+  {k:"revenue",label:"매출 큰 순"},
+  {k:"roe",label:"ROE 높은 순 (수익성)"},
+  {k:"per",label:"PER 낮은 순 (저평가)"},
+  {k:"pbr",label:"PBR 낮은 순 (저평가)"},
+  {k:"op_margin",label:"영업이익률 높은 순"},
+  {k:"revenue_yoy",label:"매출성장 높은 순"},
+  {k:"debt_ratio",label:"부채비율 낮은 순 (안전)"}
 ];
 var SCREEN_PRESETS=[
-  {k:"value", label:"💎 저평가주", desc:"PER 10↓ · PBR 1.5↓", cond:{per_max:10, pbr_max:1.5}},
-  {k:"quality", label:"⭐ 우량주", desc:"ROE 15↑ · 부채 100↓", cond:{roe_min:15, debt_max:100}},
-  {k:"growth", label:"🚀 고성장주", desc:"매출성장 20↑ · 영업이익률 10↑", cond:{growth_min:20, opm_min:10}},
-  {k:"dividend", label:"🛡️ 안정주", desc:"부채 50↓ · 영업이익률 5↑", cond:{debt_max:50, opm_min:5}},
-  {k:"buffett", label:"🎯 가치+우량", desc:"PER 15↓ · ROE 15↑ · 부채 100↓", cond:{per_max:15, roe_min:15, debt_max:100}}
+  {k:"value", label:"💎 저평가 우량주", short:"저평가",
+   desc:"PER 10↓ · PBR 1↓ · ROE 8↑ · 부채 200↓",
+   help:"싸면서도 돈을 잘 벌고 빚이 적은 기업. 단순히 주가만 싼 게 아니라 실속 있는 곳만 골랐습니다.",
+   cond:{per_max:10, pbr_max:1.0, roe_min:8, debt_max:200}},
+  {k:"quality", label:"⭐ 우량주", short:"우량",
+   desc:"ROE 15↑ · 영업이익률 10↑ · 부채 100↓",
+   help:"자기 돈으로 이익을 잘 내고(ROE), 장사도 잘하고(영업이익률), 빚도 적은 튼튼한 기업.",
+   cond:{roe_min:15, opm_min:10, debt_max:100}},
+  {k:"growth", label:"🚀 고성장주", short:"성장",
+   desc:"매출성장 20↑ · 영업이익률 10↑",
+   help:"매출이 빠르게 늘면서 이익도 남기는 기업. 성장하는 회사를 찾을 때.",
+   cond:{growth_min:20, opm_min:10}},
+  {k:"stable", label:"🛡️ 안정주", short:"안정",
+   desc:"부채 50↓ · 영업이익률 5↑ · ROE 5↑",
+   help:"빚이 거의 없고 꾸준히 이익을 내는 기업. 위험을 줄이고 싶을 때.",
+   cond:{debt_max:50, opm_min:5, roe_min:5}},
+  {k:"buffett", label:"🎯 가치+우량", short:"가치우량",
+   desc:"PER 15↓ · ROE 15↑ · 부채 100↓ · 영업이익률 10↑",
+   help:"가격도 적당하고 수익성도 좋은 기업. 워런 버핏식 '좋은 회사를 적정 가격에'.",
+   cond:{per_max:15, roe_min:15, debt_max:100, opm_min:10}}
 ];
 function applyScreenCond(rows, cond){
 if(!cond) return rows;
@@ -1920,15 +1959,23 @@ else {
     var sortOpts=FIN_SORTS.map(function(s){
       return '<option value="'+s.k+'"'+(state.finSort===s.k?' selected':'')+'>'+s.label+'</option>';
     }).join("");
-    // ★ 프리셋 바 — 사이트의 메인 기능(원클릭 종목 발굴)
-    var presetBar='<div class="fin-presets">'+
-      '<button class="fin-pbtn'+(!state.finPreset?" on":"")+'" data-action="fin-preset" data-pk="">전체</button>'+
+    // ★★ 종목 발굴 히어로 — 사이트의 메인 기능(크게 부각)
+    var presetBar='<div class="fin-hero">'+
+      '<div class="fin-hero-t">🎯 <b>조건으로 종목 찾기</b> <span class="fin-hero-sub">버튼 하나로 전종목에서 발굴</span></div>'+
+      '<div class="fin-presets">'+
       SCREEN_PRESETS.map(function(p){
         return '<button class="fin-pbtn'+(state.finPreset===p.k?" on":"")+'" data-action="fin-preset" data-pk="'+p.k+'" title="'+esc(p.desc)+'">'+esc(p.label)+'</button>';
       }).join("")+
+      '<button class="fin-pbtn fin-pbtn-all'+(!state.finPreset?" on":"")+'" data-action="fin-preset" data-pk="">전체보기</button>'+
       '<button class="fin-pbtn fin-pbtn-more" data-action="screen-open" title="직접 조건 설정">⚙ 직접설정</button>'+
       '</div>'+
-      (activePreset?('<div class="fin-preset-info"><b>'+esc(activePreset.label)+'</b> · '+esc(activePreset.desc)+' · <b>'+sortedRows.length+'개</b> 종목</div>'):'');
+      '</div>'+
+      (activePreset?('<div class="fin-preset-info">'+
+        '<div class="fpi-top"><b>'+esc(activePreset.label)+'</b> <span class="fpi-cnt">'+sortedRows.length+'개 발굴</span></div>'+
+        '<div class="fpi-help">'+esc(activePreset.help)+'</div>'+
+        '<div class="fpi-cond">조건: '+esc(activePreset.desc)+'</div>'+
+        ((state.finScope!=="all")?('<div class="fpi-tip">💡 <b>전종목</b>으로 바꾸면 더 많이 찾을 수 있어요 <button class="fpi-btn" data-action="fin-scope" data-scope="all">전종목으로</button></div>'):'')+
+      '</div>'):'');
     body=presetBar+'<div class="fin-bar">'+
       '<div class="fin-bar-row">'+
         '<div class="fin-seg" role="group">'+
@@ -4991,7 +5038,14 @@ else if(a==="fin-min"){ state.finMin=!state.finMin; render(); }
 else if(a==="fin-sort"){ state.finSort=t.getAttribute("data-k")||"revenue"; patchFinancePanel(); if(state.finOpen) render(); }
 else if(a==="fin-sector"){ state.finSector=t.getAttribute("data-sec")||""; loadFinance(); }
 else if(a==="fin-preset"){
-  state.finPreset=t.getAttribute("data-pk")||"";
+  var pk=t.getAttribute("data-pk")||"";
+  state.finPreset=pk;
+  // 프리셋에 맞는 정렬 자동 적용(초보자 편의)
+  if(pk==="value"){ state.finSort="per"; }          // 저평가 → PER 낮은순
+  else if(pk==="quality"){ state.finSort="roe"; }    // 우량 → ROE 높은순
+  else if(pk==="growth"){ state.finSort="revenue_yoy"; }  // 성장 → 매출성장 높은순
+  else if(pk==="stable"){ state.finSort="debt_ratio"; }   // 안정 → 부채 낮은순
+  else if(pk==="buffett"){ state.finSort="roe"; }
   patchFinancePanel(); if(state.finOpen) render();
 }
 else if(a==="fin-retry"){ state.finRank=null; loadFinance(true); }
