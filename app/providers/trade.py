@@ -18,7 +18,8 @@ import urllib.request
 import xml.etree.ElementTree as ET
 from typing import Optional
 
-BASE_URL = "http://apis.data.go.kr/1220000/nitemtrade/getNitemtradeList"
+BASE_URL = "https://apis.data.go.kr/1220000/nitemtrade/getNitemtradeList"
+BASE_URL_HTTP = "http://apis.data.go.kr/1220000/nitemtrade/getNitemtradeList"
 
 # 증시 섹터와 직결되는 주요 품목(HS 4단위) — 관련 종목 힌트 포함
 TRADE_ITEMS = [
@@ -78,40 +79,73 @@ class TradeProvider:
         self.transport = transport      # 테스트 주입: (url) -> xml str
         self.timeout = timeout
         self.last_error: Optional[str] = None
+        self.last_raw: Optional[str] = None   # 진단용: 마지막 응답 원본
+        self.last_url: Optional[str] = None   # 진단용: 마지막 요청 URL(키 마스킹)
 
     @property
     def enabled(self) -> bool:
         return bool(self.service_key)
 
+    def _key_param(self) -> str:
+        """serviceKey 를 URL에 안전하게 넣는다.
+        공공데이터포털 키는 Encoding(%2B 포함) 또는 Decoding(+, / 포함) 형태.
+        이미 인코딩된 키(%가 있음)는 그대로, 아니면 quote 처리."""
+        k = self.service_key
+        if "%" in k:
+            return k                                  # 이미 인코딩됨
+        return urllib.parse.quote(k, safe="")         # 원본키 → 인코딩
+
     def _get_xml(self, params: dict) -> Optional[str]:
         qs = urllib.parse.urlencode({k: v for k, v in params.items() if k != "serviceKey"})
-        url = f"{BASE_URL}?serviceKey={self.service_key}&{qs}"
+        key = self._key_param()
         if self.transport is not None:
-            return self.transport(url)
-        req = urllib.request.Request(url, headers={"User-Agent": "stock_reco/1.0"})
-        try:
-            with urllib.request.urlopen(req, timeout=self.timeout) as resp:
-                if resp.status != 200:
-                    self.last_error = f"HTTP {resp.status}"
-                    return None
-                return resp.read().decode("utf-8", "replace")
-        except Exception as e:
-            self.last_error = f"{type(e).__name__}: {e}"
-            return None
+            url = f"{BASE_URL}?serviceKey={key}&{qs}"
+            self.last_url = url.replace(key, "***")
+            raw = self.transport(url)
+            self.last_raw = (raw or "")[:800]
+            return raw
+        # https 우선, 실패 시 http 폴백(공공데이터포털은 둘 다 제공)
+        for base in (BASE_URL, BASE_URL_HTTP):
+            url = f"{base}?serviceKey={key}&{qs}"
+            self.last_url = url.replace(key, "***")
+            req = urllib.request.Request(url, headers={"User-Agent": "stock_reco/1.0"})
+            try:
+                with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+                    body = resp.read().decode("utf-8", "replace")
+                    self.last_raw = body[:800]
+                    if resp.status != 200:
+                        self.last_error = f"HTTP {resp.status}"
+                        continue
+                    return body
+            except Exception as e:
+                self.last_error = f"{type(e).__name__}: {e}"
+                continue
+        return None
 
-    @staticmethod
-    def _parse_items(xml_text: Optional[str]) -> list[dict]:
-        """XML → item 목록. 구조가 달라도 <item> 을 모두 찾아 파싱."""
+    def _parse_items(self, xml_text: Optional[str]) -> list[dict]:
+        """XML → item 목록. 구조가 달라도 <item> 을 모두 찾아 파싱.
+        오류 응답이면 last_error 에 사유 기록."""
         if not xml_text:
             return []
         try:
             root = ET.fromstring(xml_text)
-        except ET.ParseError:
+        except ET.ParseError as e:
+            self.last_error = f"XML 파싱 실패: {e}"
             return []
-        # 오류 응답 확인(resultCode 가 00이 아니면 무시)
-        rc = root.find(".//resultCode")
-        if rc is not None and (rc.text or "").strip() not in ("00", "0", ""):
-            return []
+        # 오류 응답 확인(resultCode / returnReasonCode 둘 다 대응)
+        for tag in ("resultCode", "returnReasonCode"):
+            el = root.find(f".//{tag}")
+            if el is not None:
+                code = (el.text or "").strip()
+                if code and code not in ("00", "0"):
+                    msg = ""
+                    for mt in ("resultMsg", "returnAuthMsg", "errMsg"):
+                        me = root.find(f".//{mt}")
+                        if me is not None and me.text:
+                            msg = me.text.strip()
+                            break
+                    self.last_error = f"API 오류 {code}: {msg}"
+                    return []
         out = []
         for it in root.iter("item"):
             def g(tag):
@@ -131,6 +165,8 @@ class TradeProvider:
             }
             if row["year"] or row["hs"]:
                 out.append(row)
+        if not out:
+            self.last_error = self.last_error or "응답에 데이터(item)가 없습니다."
         return out
 
     def item_trade(self, hs_code: str, country_cd: str,

@@ -17,7 +17,7 @@ from typing import Any, Optional
 
 from app.llm import explain as explain_mod
 
-BUILD_VERSION = "2026.07.05-trade1"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
+BUILD_VERSION = "2026.07.05-tradediag1"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
 
 
 def _rsi_series(values: list, period: int = 14) -> list:
@@ -1666,8 +1666,69 @@ def register_routes(app: Any, ctx: Any) -> None:
             out["error"] = err
         elif not results:
             out["note2"] = "데이터가 없습니다. API 활용신청 상태를 확인하세요."
+            # 실제 원인을 함께 노출(추측 대신 사실)
+            le = getattr(prov, "last_error", None)
+            if le:
+                out["reason"] = str(le)
+            raw = (getattr(prov, "last_raw", "") or "")
+            if "SERVICE_KEY_IS_NOT_REGISTERED" in raw:
+                out["reason"] = ("이 API에 활용신청이 되어 있지 않습니다. 공공데이터포털에서 "
+                                 "'관세청_품목별 국가별 수출입실적' 활용신청을 해주세요.")
+            elif "LIMITED_NUMBER_OF_SERVICE_REQUESTS" in raw:
+                out["reason"] = "일일 호출 한도를 초과했습니다. 잠시 후 다시 시도하세요."
         _trade_cache["data"] = out
         _trade_cache["at"] = now_t
+        return out
+    @app.get("/api/trade/diag")
+    def trade_diag(hs: str = "8542", cty: str = "CN") -> dict:
+        """수출입 API 진단 — 왜 데이터가 안 나오는지 원인 확인용.
+        키 등록 여부, 실제 요청 URL, 응답 원본, 오류 메시지를 그대로 보여준다."""
+        prov = getattr(ctx, "trade", None)
+        out = {
+            "trade_provider": prov is not None,
+            "key_set": bool(prov and getattr(prov, "enabled", False)),
+            "key_source": ("TRADE_API_KEY" if getattr(ctx.config, "trade_key", "")
+                           else ("DATA_GO_KR_KEY" if getattr(ctx.config, "data_go_key", "") else "없음")),
+        }
+        if not prov or not getattr(prov, "enabled", False):
+            out["hint"] = ("키가 없습니다. Render 환경변수에 DATA_GO_KR_KEY 또는 "
+                           "TRADE_API_KEY 를 등록하세요.")
+            return out
+        # 최근 확정월 계산(2개월 전)
+        now = ctx.clock.now()
+        y, m = now.year, now.month
+        tm, ty = m - 2, y
+        while tm <= 0:
+            tm += 12
+            ty -= 1
+        cur = f"{ty:04d}{tm:02d}"
+        prv = f"{ty-1:04d}{tm:02d}"
+        out["query"] = {"hsSgn": hs, "cntyCd": cty, "strtYymm": prv, "endYymm": cur}
+        try:
+            rows = prov.item_trade(hs, cty, prv, cur)
+            out["rows"] = len(rows)
+            out["sample"] = rows[:2]
+        except Exception as e:
+            out["exception"] = f"{type(e).__name__}: {e}"
+        out["last_error"] = getattr(prov, "last_error", None)
+        out["last_url"] = getattr(prov, "last_url", None)
+        raw = getattr(prov, "last_raw", None)
+        out["raw_response"] = (raw or "")[:600]
+        # 흔한 원인 안내
+        hints = []
+        le = (out.get("last_error") or "")
+        raws = (raw or "")
+        if "SERVICE_KEY_IS_NOT_REGISTERED" in raws or "30" in le:
+            hints.append("이 API에 활용신청이 안 됐습니다. 공공데이터포털에서 "
+                         "'관세청_품목별 국가별 수출입실적' 활용신청을 하세요.")
+        if "LIMITED_NUMBER_OF_SERVICE_REQUESTS" in raws or "22" in le:
+            hints.append("일일 호출 한도를 초과했습니다. 내일 다시 시도하세요.")
+        if "HTTP 4" in le or "HTTP 5" in le:
+            hints.append("서버 응답 오류입니다. 잠시 후 재시도하세요.")
+        if out.get("rows") == 0 and not hints:
+            hints.append("응답은 왔지만 데이터가 없습니다. 조회월이 아직 집계 전이거나 "
+                         "해당 품목·국가 실적이 없을 수 있습니다.")
+        out["hints"] = hints
         return out
 
     @app.get("/api/feed/ipo")
