@@ -17,7 +17,7 @@ from typing import Any, Optional
 
 from app.llm import explain as explain_mod
 
-BUILD_VERSION = "2026.07.05-tradefix1"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
+BUILD_VERSION = "2026.07.05-tip1"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
 
 
 def _rsi_series(values: list, period: int = 14) -> list:
@@ -1588,9 +1588,7 @@ def register_routes(app: Any, ctx: Any) -> None:
 
         now = ctx.clock.now()
         # 최근 확정월: 매월 15일경 전월 갱신 → 오늘 기준 2개월 전을 안전선으로
-        from datetime import date as _d
         y, m = now.year, now.month
-        # 2개월 전
         tm = m - 2
         ty = y
         while tm <= 0:
@@ -1598,52 +1596,77 @@ def register_routes(app: Any, ctx: Any) -> None:
             ty -= 1
         cur_ym = f"{ty:04d}{tm:02d}"
         prev_ym = f"{ty-1:04d}{tm:02d}"     # 전년 동월
+        # ★ 6개월 추이 시작월(같은 호출로 받아 호출 수 증가 없음 — API는 1년 이내 허용)
+        sm, sy = tm - 5, ty
+        while sm <= 0:
+            sm += 12
+            sy -= 1
+        trend_start = f"{sy:04d}{sm:02d}"
+        # 추이 월 목록(오래된 → 최신)
+        trend_months = []
+        _m, _y = sm, sy
+        for _ in range(6):
+            trend_months.append(f"{_y:04d}{_m:02d}")
+            _m += 1
+            if _m > 12:
+                _m = 1
+                _y += 1
 
         def _fetch_item(it):
-            """한 품목: 주요국 합산(당월 + 전년동월).
-            ※ API가 '조회기간 1년 이내'만 허용 → 당월/전년동월을 각각 따로 조회."""
+            """한 품목: 주요국 합산(6개월 추이 + 전년동월).
+            ※ API '조회기간 1년 이내' → 6개월 추이 1회 + 전년동월 1회 = 국가당 2회."""
             hs = it["hs"]
-            cur_exp = 0.0
-            prev_exp = 0.0
+            month_exp = {ym: 0.0 for ym in trend_months}   # 월별 수출 합계
             cur_imp = 0.0
+            prev_exp = 0.0
             by_country = []
             got = False
             for c in TRADE_COUNTRIES:
-                ce = 0.0
-                pe = 0.0
-                ci = 0.0
-                # 1) 당월
+                # 1) 최근 6개월(추이 + 당월)
                 try:
-                    rows_cur = prov.item_trade(hs, c["cd"], cur_ym, cur_ym)
+                    rows_t = prov.item_trade(hs, c["cd"], trend_start, cur_ym)
                 except Exception:
-                    rows_cur = []
-                for r in rows_cur:
-                    ce += (r.get("exp_dlr") or 0.0)
-                    ci += (r.get("imp_dlr") or 0.0)
+                    rows_t = []
+                ce = 0.0
+                for r in rows_t:
+                    ym = (r.get("year") or "").replace(".", "")
+                    e = r.get("exp_dlr") or 0.0
+                    if ym in month_exp:
+                        month_exp[ym] += e
+                    if ym == cur_ym:
+                        ce += e
+                        cur_imp += (r.get("imp_dlr") or 0.0)
                 # 2) 전년 동월(증감 계산용)
                 try:
-                    rows_prev = prov.item_trade(hs, c["cd"], prev_ym, prev_ym)
+                    rows_p = prov.item_trade(hs, c["cd"], prev_ym, prev_ym)
                 except Exception:
-                    rows_prev = []
-                for r in rows_prev:
+                    rows_p = []
+                pe = 0.0
+                for r in rows_p:
                     pe += (r.get("exp_dlr") or 0.0)
-                if rows_cur or rows_prev:
-                    got = True
-                cur_exp += ce
                 prev_exp += pe
-                cur_imp += ci
+                if rows_t or rows_p:
+                    got = True
                 if ce > 0:
                     by_country.append({"name": c["name"], "cd": c["cd"], "exp": ce,
                                        "yoy": (round((ce - pe) / pe * 100, 1) if pe > 0 else None)})
             if not got:
                 return None
+            cur_exp = month_exp.get(cur_ym, 0.0)
             by_country.sort(key=lambda x: x["exp"], reverse=True)
             yoy = (round((cur_exp - prev_exp) / prev_exp * 100, 1)) if prev_exp > 0 else None
+            # 추이(오래된 → 최신)
+            trend = [round(month_exp[ym], 0) for ym in trend_months]
+            # 직전월 대비(MoM) — 단기 흐름
+            mom = None
+            if len(trend) >= 2 and trend[-2] > 0:
+                mom = round((trend[-1] - trend[-2]) / trend[-2] * 100, 1)
             return {
                 "hs": hs, "name": it["name"], "icon": it["icon"], "sector": it["sector"],
                 "stocks": it["stocks"],
                 "exp": cur_exp, "imp": cur_imp, "balance": cur_exp - cur_imp,
-                "exp_prev": prev_exp, "yoy": yoy,
+                "exp_prev": prev_exp, "yoy": yoy, "mom": mom,
+                "trend": trend, "trend_months": trend_months,
                 "top_countries": by_country[:3],
             }
 
@@ -1660,8 +1683,48 @@ def register_routes(app: Any, ctx: Any) -> None:
             err = f"수출입 조회 오류: {e}"
         # 수출액 큰 순
         results.sort(key=lambda x: x.get("exp") or 0, reverse=True)
+
+        # ★ 관련 종목의 저평가 점수 붙이기(재무 캐시 재사용 — 추가 호출 없음)
+        fin_rows = None
+        for sc in ("all", "wide", "major"):
+            for pr in ("annual", "latest"):
+                c = _finance_cache.get(sc + ":" + pr)
+                if c and c.get("rows"):
+                    fin_rows = c["rows"]
+                    break
+            if fin_rows:
+                break
+        if fin_rows:
+            by_name = {}
+            for r in fin_rows:
+                nm = (r.get("name") or "").strip()
+                if nm:
+                    by_name[nm] = r
+            for it in results:
+                enriched = []
+                for s in (it.get("stocks") or []):
+                    fr = by_name.get(s)
+                    if fr:
+                        enriched.append({"name": s, "symbol": fr.get("symbol"),
+                                         "vscore": fr.get("vscore"), "per": fr.get("per"),
+                                         "roe": fr.get("roe")})
+                    else:
+                        enriched.append({"name": s})
+                it["stock_info"] = enriched
+
+        # ★ 급증/급감 하이라이트(전년동월비 기준, 수출 규모 있는 것만)
+        scored = [x for x in results if x.get("yoy") is not None and (x.get("exp") or 0) > 0]
+        top_up = sorted(scored, key=lambda x: x["yoy"], reverse=True)[:3]
+        top_down = sorted(scored, key=lambda x: x["yoy"])[:3]
+        highlights = {
+            "up": [{"name": x["name"], "icon": x["icon"], "yoy": x["yoy"], "hs": x["hs"]} for x in top_up if x["yoy"] > 0],
+            "down": [{"name": x["name"], "icon": x["icon"], "yoy": x["yoy"], "hs": x["hs"]} for x in top_down if x["yoy"] < 0],
+        }
+
         out = {"items": results, "count": len(results),
                "period": f"{ty}년 {tm}월", "period_ym": cur_ym,
+               "trend_months": trend_months,
+               "highlights": highlights,
                "ts": now.isoformat(),
                "note": "주요 교역국(중국·미국·베트남 등 10개국) 합산 기준 · 전체 수출과 차이가 있을 수 있습니다.",
                "attribution": "관세청 수출입무역통계(공공데이터포털) · 투자권유 아님"}
