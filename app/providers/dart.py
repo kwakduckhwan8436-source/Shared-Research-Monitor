@@ -243,6 +243,7 @@ class DARTProvider(DataProvider):
                 out["pymd"] = (r.get("pymd") or "").strip()      # 납입기일
                 out["sband"] = (r.get("sband") or "").strip()    # 청약공고일
                 out["asand"] = (r.get("asand") or "").strip()    # 배정공고일
+                out["_general"] = dict(r)                        # 원본 보존(추가 필드 대비)
             elif title == "증권의종류":
                 r = rows[0]
                 out["stksen"] = (r.get("stksen") or "").strip()  # 증권종류
@@ -250,7 +251,9 @@ class DARTProvider(DataProvider):
                 out["slprc"] = (r.get("slprc") or "").strip()    # 모집(공모)가액
                 out["slta"] = (r.get("slta") or "").strip()      # 모집총액
                 out["slmthn"] = (r.get("slmthn") or "").strip()  # 모집방법
+                out["_stock"] = dict(r)
             elif title == "인수인정보":
+                # ★ 청약 가능 증권사 = 인수인 목록(전부 보존, 자르지 않음)
                 uws = []
                 for r in rows:
                     nm = (r.get("actnmn") or "").strip()
@@ -260,9 +263,24 @@ class DARTProvider(DataProvider):
                         "name": nm,                                  # 인수인명(증권사)
                         "role": (r.get("actsen") or "").strip(),     # 인수인구분(대표주관 등)
                         "amount": (r.get("udtamt") or "").strip(),   # 인수금액
+                        "cnt": (r.get("stkcnt") or "").strip(),      # 인수수량
+                        "cond": (r.get("udtcn") or "").strip(),      # 인수조건(있으면)
                     })
                 if uws:
+                    # 대표주관 → 인수회사 → 기타 순 정렬
+                    def _rk(u):
+                        r0 = u.get("role") or ""
+                        if "대표" in r0:
+                            return 0
+                        if "공동" in r0:
+                            return 1
+                        if "인수" in r0:
+                            return 2
+                        return 3
+                    uws.sort(key=_rk)
                     out["underwriters"] = uws
+            elif title == "자금의사용목적":
+                out["_usage"] = [dict(r) for r in rows]
         return out
 
     def recent_ipos(self, now: datetime, *, days: int = 30,
