@@ -95,6 +95,41 @@ def classify_disclosure(title: str) -> Optional[dict]:
     return None
 
 
+# 실적발표 공시 분류 — 캘린더의 '실적' 이벤트용.
+#   앞의 규칙이 먼저 이기므로 '구체적인 것 → 일반적인 것' 순으로 둘 것.
+#   (예: '연결재무제표기준영업(잠정)실적' 이 '영업(잠정)실적' 보다 위)
+# kind: forecast=발표 예정 안내, actual=실제 실적 수치 공시
+_EARNINGS_RULES = [
+    ("결산실적공시예고", "실적발표 예고", "forecast"),
+    ("실적공시예고", "실적발표 예고", "forecast"),
+    ("연결재무제표기준영업(잠정)실적", "잠정실적(연결)", "actual"),
+    ("영업(잠정)실적", "잠정실적", "actual"),
+    ("매출액또는손익구조", "손익구조 변경", "actual"),
+    ("연결재무제표기준영업실적", "영업실적(연결)", "actual"),
+    ("영업실적등에대한전망", "실적 전망", "forecast"),
+    ("사업보고서", "연간실적", "actual"),
+    ("반기보고서", "반기실적", "actual"),
+    ("분기보고서", "분기실적", "actual"),
+]
+
+
+def classify_earnings(title: str) -> Optional[dict]:
+    """공시 제목이 '실적발표'에 해당하면 {label, kind} 를, 아니면 None.
+
+    주의: 정기보고서(사업·반기·분기보고서)가 사실상 실적 공시의 대부분인데
+    제목에 '실적' 이라는 글자가 없다. 제목에 '실적' 이 들어간 것만 찾으면
+    캘린더에 거의 아무것도 안 뜬다."""
+    t = (title or "").replace(" ", "")
+    if not t:
+        return None
+    # 정정·기재정정 공시는 원 공시와 중복되므로 라벨에만 표시
+    amended = t.startswith("[기재정정]") or t.startswith("[정정]") or "정정신고" in t
+    for kw, label, kind in _EARNINGS_RULES:
+        if kw in t:
+            return {"label": label, "kind": kind, "amended": amended}
+    return None
+
+
 class DARTProvider(DataProvider):
     name = "dart"
     supported_kinds = (Kind.FINANCIALS.value,)
@@ -142,24 +177,40 @@ class DARTProvider(DataProvider):
 
     def recent_disclosures(self, now: datetime, *, days: int = 2,
                            page_count: int = 100, max_pages: int = 3,
-                           only_listed: bool = True) -> list[dict]:
+                           only_listed: bool = True,
+                           bgn_date=None, end_date=None,
+                           pblntf_ty: str = "") -> list[dict]:
         """시장 전체 최근 공시 — corp_code 없이 날짜 범위로 조회. 최신(접수번호 역순).
         days=조회 일수. only_listed=상장사(종목코드 있음)만.
+
+        bgn_date/end_date(date) 를 주면 now-days 대신 그 구간을 그대로 조회한다.
+        → 지난달 같은 과거 구간을 정확히 볼 수 있다(캘린더용).
+        pblntf_ty: DART 공시유형 1글자 필터(A=정기공시, B=주요사항, C=발행,
+        D=지분, E=기타, F=외부감사, I=거래소공시, J=공정위). 비우면 전체.
+        → 전체 조회는 하루 수천 건이라 페이지 한도에 걸려 과거가 잘린다.
+          유형을 좁히면 같은 페이지 수로 훨씬 긴 구간을 담을 수 있다.
+
         키/한도 오류는 self.last_disclosure_error 에 저장(데이터 없음은 오류 아님)."""
         self.last_disclosure_error = None
         if not self.api_key:
             self.last_disclosure_error = "DART 키가 설정되지 않았습니다(.env 의 DART_API_KEY)."
             return []
-        end = now.astimezone(KST).date()
-        start = end - timedelta(days=max(0, days - 1))
+        if bgn_date is not None and end_date is not None:
+            start, end = bgn_date, end_date
+        else:
+            end = now.astimezone(KST).date()
+            start = end - timedelta(days=max(0, days - 1))
         seen: set[str] = set()
         items: list[dict] = []
         for page in range(1, max_pages + 1):
             try:
-                body = self._get("/list.json", {
+                q = {
                     "bgn_de": start.strftime("%Y%m%d"), "end_de": end.strftime("%Y%m%d"),
                     "page_no": str(page), "page_count": str(page_count),
-                })
+                }
+                if pblntf_ty:
+                    q["pblntf_ty"] = pblntf_ty
+                body = self._get("/list.json", q)
             except ProviderError as e:
                 msg = str(e)
                 # status=013(데이터 없음)은 오류가 아니라 '해당 기간 공시 없음'
@@ -209,6 +260,52 @@ class DARTProvider(DataProvider):
         # 접수번호 역순 = 최신순
         items.sort(key=lambda x: x["rcept_no"], reverse=True)
         return items
+
+    # 실적 공시가 들어있는 DART 공시유형만 조회한다(전체 조회는 양이 너무 많다).
+    #   A = 정기공시   → 사업보고서·반기보고서·분기보고서
+    #   I = 거래소공시 → 영업(잠정)실적, 매출액또는손익구조 변경, 결산실적공시예고
+    EARNINGS_PBLNTF_TY = ("A", "I")
+
+    def earnings_disclosures(self, now: datetime, bgn_date, end_date, *,
+                             max_pages: int = 20,
+                             page_count: int = 100) -> list[dict]:
+        """구간 내 '실적발표' 공시만 모아 반환. 각 항목에 earnings 정보를 붙인다.
+
+        반환 항목 = recent_disclosures 항목 + {"earnings": {label, kind, amended}}
+        조회 실패 시 빈 리스트(호출부에서 graceful)."""
+        out: list[dict] = []
+        seen: set[str] = set()
+        # 구간을 주 단위로 쪼개 조회한다.
+        #   정기보고서 마감일(3/31·5/15·8/14·11/14)엔 하루에만 2천 건이 넘어
+        #   한 달을 통째로 조회하면 페이지 한도에 걸려 월초가 통째로 잘린다.
+        #   페이지 루프는 total_page 에서 멈추므로 쪼개도 호출 수는 거의 안 는다.
+        windows = []
+        cur = bgn_date
+        while cur <= end_date:
+            nxt = min(cur + timedelta(days=6), end_date)
+            windows.append((cur, nxt))
+            cur = nxt + timedelta(days=1)
+        for ty in self.EARNINGS_PBLNTF_TY:
+            rows = []
+            for w_bgn, w_end in windows:
+                try:
+                    rows.extend(self.recent_disclosures(
+                        now, bgn_date=w_bgn, end_date=w_end,
+                        pblntf_ty=ty, max_pages=max_pages, page_count=page_count,
+                        only_listed=True))
+                except Exception:
+                    continue
+            for it in rows:
+                rc = it.get("rcept_no", "")
+                if rc in seen:
+                    continue
+                info = classify_earnings(it.get("title", ""))
+                if not info:
+                    continue
+                seen.add(rc)
+                out.append({**it, "earnings": info})
+        out.sort(key=lambda x: x.get("rcept_no", ""), reverse=True)
+        return out
 
     def ipo_detail(self, corp_code: str, bgn_de: str, end_de: str) -> dict:
         """증권신고서(지분증권) 주요정보 — 청약기일·납입기일·주관사·공모가.

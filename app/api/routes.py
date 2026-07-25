@@ -17,7 +17,7 @@ from typing import Any, Optional
 
 from app.llm import explain as explain_mod
 
-BUILD_VERSION = "2026.07.05-ipodetail2"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
+BUILD_VERSION = "2026.07.26-earncal1"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
 
 
 def _rsi_series(values: list, period: int = 14) -> list:
@@ -2480,7 +2480,10 @@ def register_routes(app: Any, ctx: Any) -> None:
             return {"items": [], "note": "DATA_GO_KR_KEY 설정 시 표시됩니다(공공데이터포털).",
                     "attribution": "출처: 금융위원회·한국예탁결제원 (공공데이터포털)"}
         now_t = _time.time()
-        cached = _corp_event_cache.get(kind)
+        # 캐시 키에 조회조건을 포함해야 한다. 예전엔 kind 만 썼기 때문에
+        # A사를 검색한 뒤 1시간 안에 B사를 검색하면 A사 결과가 그대로 나왔다.
+        ckey = kind + "|" + "&".join(f"{k}={v}" for k, v in sorted((params or {}).items()) if v)
+        cached = _corp_event_cache.get(ckey)
         if cached and now_t - cached[1] < ttl:
             return cached[0]
         try:
@@ -2492,7 +2495,7 @@ def register_routes(app: Any, ctx: Any) -> None:
                "note": "공시일 기준 자료(실시간 아님). 사실 정보이며 투자권유가 아닙니다."}
         if not rows:
             out["error"] = "자료를 불러오지 못했습니다(키/네트워크/주말 점검)."
-        _corp_event_cache[kind] = (out, now_t)
+        _corp_event_cache[ckey] = (out, now_t)
         return out
 
     @app.get("/api/corp/dividend")
@@ -2513,9 +2516,35 @@ def register_routes(app: Any, ctx: Any) -> None:
 
     @app.get("/api/corp/finance")
     def corp_finance(name: str = "") -> dict:
-        """기업 재무정보(요약) — 종목명으로 조회. 매출·영업이익·순이익 등."""
-        params = {"crno": "", "corpNm": name} if name else {}
-        return _corp_events("finance", params, ttl=3600)
+        """기업 재무정보(요약) — 회사명으로 조회. 매출·영업이익·순이익 등.
+
+        이 API 는 회사명이 아니라 법인등록번호(crno)로만 조회되므로
+        기업기본정보에서 crno 를 먼저 찾아 2단계로 조회한다."""
+        attr = "출처: 금융위원회·한국예탁결제원 (공공데이터포털 data.go.kr)"
+        note = "공시일 기준 자료(실시간 아님). 사실 정보이며 투자권유가 아닙니다."
+        prov = getattr(ctx, "public_data", None)
+        if prov is None:
+            return {"items": [], "attribution": attr,
+                    "note": "DATA_GO_KR_KEY 설정 시 표시됩니다(공공데이터포털)."}
+        nm = (name or "").strip()
+        if not nm:
+            return {"items": [], "attribution": attr,
+                    "note": "회사명을 입력하면 재무정보를 조회합니다."}
+        now_t = _time.time()
+        ckey = "finance|" + nm
+        cached = _corp_event_cache.get(ckey)
+        if cached and now_t - cached[1] < 3600:
+            return cached[0]
+        try:
+            res = prov.finance_by_name(nm)
+        except Exception as e:
+            res = {"items": [], "reason": f"조회 중 오류: {e}"}
+        out = {"items": (res.get("items") or [])[:12],
+               "attribution": attr, "note": note}
+        if not out["items"]:
+            out["error"] = res.get("reason") or "자료를 불러오지 못했습니다(키/네트워크 점검)."
+        _corp_event_cache[ckey] = (out, now_t)
+        return out
 
     @app.get("/api/corp/dividend_detail")
     def corp_dividend_detail(name: str = "") -> dict:
@@ -2685,26 +2714,44 @@ def register_routes(app: Any, ctx: Any) -> None:
                 "presence": {"site": site, "chat": chat_users}}
 
     # 공시 유형 분류 — 캘린더에 표시할 '이벤트성' 공시만(제목 키워드 기반, 추측 없음)
+    #   ※ 순서 주의: 앞 규칙이 먼저 이기므로 '구체적인 것'을 위에 둔다.
+    #     (예전엔 "실적"이 "영업(잠정)실적"보다 위에 있어 뒤 규칙이 죽은 코드였다)
+    #   ※ 실적은 별도 이벤트 타입(earnings)으로 빠졌으므로 여기서 제외한다.
     _DART_EVENT_RULES = [
         ("주주총회", "주총", "agm"),
-        ("배당", "배당", "dividend"),
         ("유상증자", "유상증자", "rights"),
         ("무상증자", "무상증자", "rights"),
+        ("자기주식", "자사주", "buyback"),
+        ("증권신고서", "공모", "ipo"),
+        ("분할합병", "분할합병", "ma"),
         ("합병", "합병", "ma"),
         ("분할", "분할", "ma"),
-        ("자기주식", "자사주", "buyback"),
-        ("실적", "실적", "earnings"),
-        ("영업(잠정)실적", "잠정실적", "earnings"),
-        ("증권신고서", "공모", "ipo"),
+        ("배당", "배당", "dividend"),
         ("공모", "공모", "ipo"),
     ]
 
     def _classify_disclosure(title: str):
+        """이벤트성 공시 → (짧은라벨, etype). 실적 공시는 여기서 제외(별도 처리)."""
         t = title or ""
+        from app.providers.dart import classify_earnings as _ce
+        if _ce(t):
+            return None, None          # 실적은 earnings 이벤트로 따로 나간다
         for kw, short, etype in _DART_EVENT_RULES:
             if kw in t:
                 return short, etype
         return None, None
+
+    def _month_range(year: int, month: int, now):
+        """그 달의 조회 구간(date, date). 당월이면 오늘까지만."""
+        import calendar as _cal
+        from datetime import date as _date
+        last = _cal.monthrange(year, month)[1]
+        bgn = _date(year, month, 1)
+        end = _date(year, month, last)
+        today = now.date() if hasattr(now, "date") else now
+        if end > today:
+            end = today
+        return bgn, end
 
     def _dart_calendar_events(year: int, month: int) -> list:
         """해당 월의 DART 공시 중 '이벤트성' 공시를 캘린더 이벤트로 분류.
@@ -2716,7 +2763,9 @@ def register_routes(app: Any, ctx: Any) -> None:
         # 현재월 기준 과거~현재만 의미(미래월은 공시가 아직 없음)
         if (year, month) > (now.year, now.month):
             return []
-        ck = f"dartcal:{year:04d}-{month:02d}"
+        # 캐시 키에 v2 — 예전 캐시엔 실적이 disclosure 타입으로 섞여 있어
+        # 그대로 두면 새 earnings 이벤트와 중복으로 보인다.
+        ck = f"dartcal2:{year:04d}-{month:02d}"
         try:
             row = ctx.store.get_setting(ck)
             if row and row.get("value"):
@@ -2728,22 +2777,13 @@ def register_routes(app: Any, ctx: Any) -> None:
                     return cached
         except Exception:
             pass
-        # 이번 달 며칠치 공시를 가져온다(당월이면 오늘까지, 과거월이면 최대 31일)
-        from datetime import date as _date
-        try:
-            if (year, month) == (now.year, now.month):
-                days = now.day
-            else:
-                import calendar as _cal
-                days = _cal.monthrange(year, month)[1]
-            days = min(days, 31)
-        except Exception:
-            days = 7
+        bgn, end = _month_range(year, month, now)
         evs = []
         seen = set()
         try:
-            # recent_disclosures 는 now 기준 과거 days. 과거월 조회는 부정확할 수 있어 당월 위주.
-            items = ctx.dart.recent_disclosures(now, days=days, max_pages=5)
+            # 조회 구간을 그 달로 명시한다(예전엔 now 기준 days 라 과거월이 어긋났다).
+            items = ctx.dart.recent_disclosures(now, bgn_date=bgn, end_date=end,
+                                                max_pages=5)
             pref = f"{year:04d}-{month:02d}"
             for it in items:
                 pub = (it.get("published_at") or "")[:10]
@@ -2761,6 +2801,108 @@ def register_routes(app: Any, ctx: Any) -> None:
                             "label": f"{nm} {short}", "etype": etype,
                             "url": it.get("url", "")})
             evs = evs[:120]
+            ctx.store.set_setting(ck, _json_mod.dumps(evs, ensure_ascii=False), now.isoformat())
+        except Exception:
+            return []
+        return evs
+
+    # 실적 라벨 → 캘린더 배지 아이콘
+    _EARN_ICON = {"forecast": "🔔", "actual": "📊"}
+    # 하루에 개별로 보여줄 실적 건수 상한(넘치면 '외 N건'으로 묶음)
+    _EARN_PER_DAY = 12
+    _major_cache: dict = {}
+
+    def _major_set() -> set:
+        """대표 종목 코드 집합 — 실적이 몰리는 날 우선순위를 주기 위해."""
+        if not _major_cache:
+            try:
+                from app.core.major_stocks import major_symbols
+                _major_cache["s"] = set(major_symbols())
+            except Exception:
+                _major_cache["s"] = set()
+        return _major_cache.get("s") or set()
+
+    def _cap_earnings_per_day(evs: list) -> list:
+        """정기보고서 마감일(3/31·5/15·8/14·11/14)엔 하루 수천 건이 몰린다.
+        그대로 두면 캘린더가 실적으로 도배되므로 날짜별로 상한을 두고
+        나머지는 '외 N건' 한 줄로 묶는다. 대표 종목·실적예고를 우선 노출."""
+        by_day: dict = {}
+        for e in evs:
+            by_day.setdefault(e["date"], []).append(e)
+        out = []
+        for day in sorted(by_day):
+            rows = by_day[day]
+            # 우선순위: 대표종목 > 발표예고/잠정실적 > 나머지
+            rows.sort(key=lambda e: (
+                0 if e.get("major") else 1,
+                0 if e.get("kind") == "forecast" else 1,
+                e.get("label", ""),
+            ))
+            keep = rows[:_EARN_PER_DAY]
+            rest = len(rows) - len(keep)
+            out.extend(keep)
+            if rest > 0:
+                out.append({"date": day, "type": "earnings", "etype": "earnings",
+                            "kind": "more", "label": f"📊 그 외 실적발표 {rest}건",
+                            "url": "https://dart.fss.or.kr/dsab007/main.do"})
+        return out
+
+    def _dart_earnings_events(year: int, month: int) -> list:
+        """해당 월의 '실적발표' 공시를 캘린더 이벤트(type=earnings)로.
+
+        일반 공시 조회와 분리한 이유:
+          · 실적의 대부분인 정기보고서(사업·반기·분기)는 제목에 '실적'이 없다.
+          · DART 전체 공시는 하루 수천 건이라 한 달을 5페이지로 못 덮는다.
+            → 공시유형 A(정기)·I(거래소)만 좁혀 조회한다.
+        날짜는 공시 접수일. 미래 예정일은 '결산실적공시예고' 처럼
+        공시로 확정된 것만 쓰고 본문에서 추측하지 않는다.
+        캐시: settings dartearn:YYYY-MM (당월 6시간 / 과거월 7일)"""
+        if ctx.config.data_source == "mock" or ctx.dart is None or not ctx.config.dart_api_key:
+            return []
+        now = ctx.clock.now()
+        if (year, month) > (now.year, now.month):
+            return []
+        ck = f"dartearn:{year:04d}-{month:02d}"
+        try:
+            row = ctx.store.get_setting(ck)
+            if row and row.get("value"):
+                cached = _json_mod.loads(row["value"])
+                age = (now - _t_rec_dt(row.get("updated_at"))).total_seconds() if row.get("updated_at") else 1e9
+                ttl = 21600 if (year, month) == (now.year, now.month) else 604800
+                if age < ttl:
+                    return cached
+        except Exception:
+            pass
+        bgn, end = _month_range(year, month, now)
+        evs = []
+        seen = set()
+        try:
+            items = ctx.dart.earnings_disclosures(now, bgn, end, max_pages=20)
+            pref = f"{year:04d}-{month:02d}"
+            for it in items:
+                pub = (it.get("published_at") or "")[:10]
+                if not pub.startswith(pref):
+                    continue
+                info = it.get("earnings") or {}
+                short = info.get("label") or "실적"
+                nm = it.get("corp") or it.get("symbol") or ""
+                if not nm:
+                    continue
+                key = (pub, nm, short)
+                if key in seen:
+                    continue
+                seen.add(key)
+                icon = _EARN_ICON.get(info.get("kind"), "📊")
+                label = f"{icon} {nm} {short}"
+                if info.get("amended"):
+                    label += " (정정)"
+                evs.append({"date": pub, "type": "earnings",
+                            "label": label[:80], "etype": "earnings",
+                            "kind": info.get("kind", "actual"),
+                            "symbol": it.get("symbol", ""),
+                            "major": it.get("symbol", "") in _major_set(),
+                            "url": it.get("url", "")})
+            evs = _cap_earnings_per_day(evs)
             ctx.store.set_setting(ck, _json_mod.dumps(evs, ensure_ascii=False), now.isoformat())
         except Exception:
             return []
@@ -2836,9 +2978,14 @@ def register_routes(app: Any, ctx: Any) -> None:
                                        "label": str(e.get("label", ""))[:80]})
         except Exception:
             pass
-        # DART 공시 이벤트(공개 데이터) — 실적·배당·주총·증자·공모 등
+        # DART 공시 이벤트(공개 데이터) — 배당·주총·증자·공모 등
         try:
             events.extend(_dart_calendar_events(y, m))
+        except Exception:
+            pass
+        # ★ 실적발표 공시(정기보고서 + 거래소 잠정실적) — 별도 타입으로
+        try:
+            events.extend(_dart_earnings_events(y, m))
         except Exception:
             pass
         # ★ 공모주 청약일(증권신고서 확정 일정) — 미래 일정도 표시
@@ -2886,6 +3033,11 @@ def register_routes(app: Any, ctx: Any) -> None:
             events.extend(_dart_calendar_events(y, m))
         except Exception:
             pass
+        try:
+            events.extend(_dart_earnings_events(y, m))
+        except Exception:
+            pass
+        events.sort(key=lambda e: e["date"])
         lines = ["BEGIN:VCALENDAR", "VERSION:2.0",
                  "PRODID:-//모두의 리서치 모니터//증시 캘린더//KR", "CALSCALE:GREGORIAN"]
         for e in events:

@@ -41,6 +41,7 @@ TEST_MODULES = [
     "tests.test_google_news",
     "tests.test_screener",
     "tests.test_board_mflow",
+    "tests.test_earnings_calendar",
 ]
 
 

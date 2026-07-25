@@ -31,20 +31,21 @@ KST = timezone(timedelta(hours=9))
 # 공공데이터포털 금융 API 베이스(서비스별 경로). 운영자가 실제 명세에 맞게 조정 가능.
 BASE = "https://apis.data.go.kr/1160100/service"
 ENDPOINTS = {
-    # 공시정보 서비스(배당/증자/자기주식 등)
-    "dividend":   BASE + "/GetStocDiviInfoService/getDiviInfo",            # 주식배당정보(확인됨)
-    "rights":     BASE + "/GetDisclInfoService/getCapitalIncreaseInfo",    # 유/무상증자(추정)
-    "treasury":   BASE + "/GetDisclInfoService/getTreasuryStockInfo",      # 자기주식(추정)
-    # 주식발행정보 서비스 — 의무보호예수 반환(해제)
+    # ── 주소 확인됨(403 = 활용신청만 하면 작동) ──
+    "dividend":   BASE + "/GetStocDiviInfoService/getDiviInfo",            # 주식배당정보
+    "dividend_detail": BASE + "/GetStocDiviInfoService/getDiviInfo",       # 주식배당정보(동일)
+    "rights_schedule": BASE + "/GetStocRighScheService/getRighExerReasSche",  # 주식권리일정
+    "corp":       BASE + "/GetCorpBasicInfoService_V2/getCorpOutline_V2",  # 기업기본정보
+    # 기업재무정보 — 서비스/오퍼레이션 모두 _V2 가 붙는다(포털 명세 확인).
+    # 예전 값(GetFinaStatInfoService/getSummFinaStat)은 404 → 재무 탭이 늘 비어 있었음.
+    "finance":    BASE + "/GetFinaStatInfoService_V2/getSummFinaStat_V2",  # 요약재무제표
+    # ── 주소 미확정(공공데이터포털 상세기능에서 정확한 요청주소 확인 후
+    #     환경변수 RECO_CORP_EP_* 로 넣으면 작동). 기본값은 추정이라 404 가능 ──
+    "rights":     BASE + "/GetDisclInfoService/getCapitalIncreaseInfo",    # 유/무상증자(미확정)
+    "treasury":   BASE + "/GetDisclInfoService/getTreasuryStockInfo",      # 자기주식(미확정)
+    # ── 보호예수(주식발행정보)는 공공누리 2유형=상업적 이용금지 →
+    #     광고 사이트에서 사용 불가. 기본 비활성(환경변수로만 활성화) ──
     "lockup":     BASE + "/GetStocIssuInfoService/getMandatoryDepositReturnInfo",
-    # 기업기본정보(확인됨: V2)
-    "corp":       BASE + "/GetCorpBasicInfoService_V2/getCorpOutline_V2",
-    # 기업재무정보(요약재무제표)(추정)
-    "finance":    BASE + "/GetFinaStatInfoService/getSummFinaStat",
-    # 주식배당정보(상세)(확인됨)
-    "dividend_detail": BASE + "/GetStocDiviInfoService/getDiviInfo",
-    # 주식권리일정(확인됨)
-    "rights_schedule": BASE + "/GetStocRighScheService/getRighExerReasSche",
 }
 
 # 운영자가 발급 후 Swagger 명세에서 확인한 정확한 URL로 덮어쓸 수 있다.
@@ -151,6 +152,48 @@ class PublicDataProvider:
             return []
         text = self._fetch(ep, params or {})
         return self.parse_items(text)
+
+    def find_crno(self, corp_name: str) -> Optional[str]:
+        """회사명 → 법인등록번호(crno). 기업기본정보에서 찾는다.
+
+        기업재무정보 API 는 회사명이 아니라 법인등록번호로만 조회된다.
+        (예전엔 corpNm 을 그대로 넘겨서 아무것도 안 나왔다)"""
+        nm = (corp_name or "").strip()
+        if not nm or not self.enabled:
+            return None
+        rows = self.fetch("corp", {"corpNm": nm, "numOfRows": 10})
+        if not rows:
+            return None
+        # 정확히 같은 이름 우선 → 없으면 첫 결과
+        for r in rows:
+            if (r.get("corpNm") or "").strip() == nm and r.get("crno"):
+                return str(r["crno"]).strip()
+        for r in rows:
+            if r.get("crno"):
+                return str(r["crno"]).strip()
+        return None
+
+    def finance_by_name(self, corp_name: str, *, years: int = 3) -> dict:
+        """회사명으로 요약재무제표 조회. 2단계(이름→crno→재무).
+
+        반환 {"items": [...], "crno": ..., "reason": 실패사유}"""
+        crno = self.find_crno(corp_name)
+        if not crno:
+            return {"items": [], "crno": None,
+                    "reason": f"'{corp_name}' 의 법인등록번호를 찾지 못했습니다. "
+                              "정식 상호로 검색해보세요(예: 삼성전자, NAVER)."}
+        now_y = datetime.now(KST).year
+        items: list[dict] = []
+        # 최근 회계연도는 공시 시차가 있어 비어 있을 수 있다 → 몇 해 거슬러 시도
+        for y in range(now_y - 1, now_y - 1 - max(1, years), -1):
+            rows = self.fetch("finance", {"crno": crno, "bizYear": str(y)})
+            if rows:
+                items.extend(rows)
+        if not items:
+            return {"items": [], "crno": crno,
+                    "reason": "법인등록번호는 찾았으나 재무자료가 없습니다"
+                              "(비외감·신규법인이거나 아직 미공시)."}
+        return {"items": items, "crno": crno, "reason": ""}
 
     # 공공데이터포털 표준 에러코드 → 사람이 읽고 바로 행동할 진단
     _ERROR_GUIDE = [

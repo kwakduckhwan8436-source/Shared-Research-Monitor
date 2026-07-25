@@ -64,6 +64,9 @@ body.light .fpi-btn:hover{background:#bd8019;color:#fff}
 body.light .cal-dot.ipo{background:#13917d}
 body.light .cal-ev.ipo{border-left-color:#13917d;background:rgba(19,145,125,.05)}
 body.light .cal-fchip.ipo{border-left-color:#13917d}
+body.light .cal-dot.earnings{background:#d1477a}
+body.light .cal-ev.earnings{border-left-color:#d1477a;background:rgba(209,71,122,.05)}
+body.light .cal-fchip.earnings{border-left-color:#d1477a}
 body.light .th-help:hover{background:#13917d;color:#fff}
 body.light .chatbody2{background:radial-gradient(120% 80% at 50% 0,#e6ebf4 0,var(--bg) 70%)}
 body.light .floatwin{background:linear-gradient(160deg,#f7f9fc,#e9edf4)}
@@ -218,7 +221,7 @@ background:linear-gradient(135deg,var(--panel2),var(--panel));border:1px solid v
 .cal-dot{width:6px;height:6px;border-radius:50%;display:inline-block}
 .cal-dot.holiday{background:#ff5b5b}.cal-dot.expiry{background:#e7ad48}
 .cal-dot.dividend{background:#7fe6b0}.cal-dot.custom{background:#6fa8ff}
-.cal-dot.econ{background:#c98bff}.cal-dot.disclosure{background:#f0a868}.cal-dot.filing{background:#5b9dff}.cal-dot.global{background:#4db8e8}.cal-dot.market{background:#e7ad48}.cal-dot.ipo{background:#41c7b0}
+.cal-dot.econ{background:#c98bff}.cal-dot.disclosure{background:#f0a868}.cal-dot.filing{background:#5b9dff}.cal-dot.global{background:#4db8e8}.cal-dot.market{background:#e7ad48}.cal-dot.ipo{background:#41c7b0}.cal-dot.earnings{background:#ff8fb1}
 .cal-legend{display:flex;flex-wrap:wrap;gap:9px;margin:12px 0 6px;font-size:10px;color:var(--muted)}
 .cal-legend span{display:inline-flex;align-items:center;gap:4px}
 .cal-list{margin-top:10px;display:flex;flex-direction:column;gap:5px;max-height:170px;overflow-y:auto}
@@ -226,7 +229,7 @@ background:linear-gradient(135deg,var(--panel2),var(--panel));border:1px solid v
 .cal-ev:hover{transform:translateX(2px)}
 .cal-ev.holiday{border-left-color:#ff5b5b}.cal-ev.expiry{border-left-color:#e7ad48}
 .cal-ev.dividend{border-left-color:#7fe6b0}.cal-ev.custom{border-left-color:#6fa8ff}
-.cal-ev.econ{border-left-color:#c98bff}.cal-ev.disclosure{border-left-color:#f0a868}.cal-ev.filing{border-left-color:#5b9dff}.cal-ev.global{border-left-color:#4db8e8}.cal-ev.market{border-left-color:#e7ad48}.cal-ev.ipo{border-left-color:#41c7b0;background:rgba(65,199,176,.06)}
+.cal-ev.econ{border-left-color:#c98bff}.cal-ev.disclosure{border-left-color:#f0a868}.cal-ev.filing{border-left-color:#5b9dff}.cal-ev.global{border-left-color:#4db8e8}.cal-ev.market{border-left-color:#e7ad48}.cal-ev.ipo{border-left-color:#41c7b0;background:rgba(65,199,176,.06)}.cal-ev.earnings{border-left-color:#ff8fb1;background:rgba(255,143,177,.06)}
 a.cal-ev{text-decoration:none}
 a.cal-ev:hover{background:var(--panel3)}
 .cal-ev-d{font-size:11px;font-weight:800;color:var(--ink);flex:none;min-width:34px}
@@ -243,7 +246,7 @@ a.cal-ev:hover{background:var(--panel3)}
 .cal-fchip.off{opacity:.35;text-decoration:line-through}
 .cal-fchip.holiday{border-left:3px solid #ff5b5b}.cal-fchip.expiry{border-left:3px solid #e7ad48}
 .cal-fchip.dividend{border-left:3px solid #7fe6b0}.cal-fchip.econ{border-left:3px solid #c98bff}
-.cal-fchip.disclosure{border-left:3px solid #f0a868}.cal-fchip.custom{border-left:3px solid #6fa8ff}.cal-fchip.filing{border-left:3px solid #5b9dff}.cal-fchip.global{border-left:3px solid #4db8e8}.cal-fchip.ipo{border-left:3px solid #41c7b0;font-weight:700}
+.cal-fchip.disclosure{border-left:3px solid #f0a868}.cal-fchip.custom{border-left:3px solid #6fa8ff}.cal-fchip.filing{border-left:3px solid #5b9dff}.cal-fchip.global{border-left:3px solid #4db8e8}.cal-fchip.ipo{border-left:3px solid #41c7b0;font-weight:700}.cal-fchip.earnings{border-left:3px solid #ff8fb1;font-weight:700}
 .cal-tools{display:flex;gap:7px;margin:10px 0}
 .cal-tool{font-size:11px;padding:6px 12px;border-radius:8px;border:1px solid var(--line2);background:var(--panel);color:var(--ink2);cursor:pointer;text-decoration:none;transition:all .12s}
 .cal-tool:hover{border-color:var(--teal);color:var(--teal)}
@@ -3061,6 +3064,7 @@ listItems='<div class="cal-empty">불러오는 중…</div>';
 }
 var legend='<div class="cal-legend">'+
 '<span><span class="cal-dot ipo"></span>공모주</span>'+
+'<span><span class="cal-dot earnings"></span>실적발표</span>'+
 '<span><span class="cal-dot holiday"></span>휴장</span>'+
 '<span><span class="cal-dot expiry"></span>만기</span>'+
 '<span><span class="cal-dot dividend"></span>배당락</span>'+
@@ -3081,7 +3085,7 @@ return '<div class="cal-week-r"><span class="cal-week-d '+e.type+'">'+dd+'</span
 }
 // 공시 유형 필터 칩
 state.calFilter = state.calFilter || {};
-var FILTERS=[['ipo','🎈공모주'],['holiday','휴장'],['expiry','만기'],['dividend','배당락'],['econ','금리·지표'],['filing','법정기한'],['global','해외증시·중앙은행'],['disclosure','공시'],['custom','기타']];
+var FILTERS=[['ipo','🎈공모주'],['earnings','📊실적발표'],['holiday','휴장'],['expiry','만기'],['dividend','배당락'],['econ','금리·지표'],['filing','법정기한'],['global','해외증시·중앙은행'],['disclosure','공시'],['custom','기타']];
 var filterBar='<div class="cal-filter">'+FILTERS.map(function(f){
 var off=state.calFilter[f[0]];
 return '<button class="cal-fchip '+f[0]+(off?' off':'')+'" data-action="cal-filter" data-f="'+f[0]+'">'+f[1]+'</button>';
