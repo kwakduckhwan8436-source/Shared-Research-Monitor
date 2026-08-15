@@ -130,6 +130,56 @@ def classify_earnings(title: str) -> Optional[dict]:
     return None
 
 
+# 주주환원·지배구조 공시 분류 — '스마트머니 신호' 패널용.
+#   세 갈래로 나눈다:
+#     buyback   = 자사주 (매입/처분/소각)
+#     insider   = 대주주·임원 지분 변동 (5%룰, 임원·주요주주 소유보고)
+#     control   = 최대주주 변경·경영권 (M&A, 지분매각)
+#   sign: positive=주주가치에 우호적(매입·소각), negative=비우호(처분·매각),
+#         neutral=방향이 공시 제목만으론 불분명(변경·보유 보고)
+#   순서 주의: 구체적인 규칙(소각)이 일반 규칙(취득)보다 위.
+_GOV_RULES = [
+    # 자사주 — 소각은 가장 강한 주주환원 신호라 맨 위
+    ("자기주식소각", "buyback", "자사주 소각", "positive", 3),
+    ("자기주식취득신탁계약체결", "buyback", "자사주 신탁취득", "positive", 2),
+    ("자기주식취득신탁계약해지", "buyback", "자사주 신탁해지", "negative", 2),
+    ("자기주식취득", "buyback", "자사주 취득", "positive", 3),
+    ("자기주식처분", "buyback", "자사주 처분", "negative", 2),
+    ("자기주식", "buyback", "자사주", "neutral", 1),
+    # 경영권·최대주주
+    ("최대주주변경", "control", "최대주주 변경", "neutral", 3),
+    ("최대주주등의주식보유변동", "control", "최대주주 보유변동", "neutral", 2),
+    ("경영권", "control", "경영권 관련", "neutral", 3),
+    ("영업양수", "control", "영업양수", "neutral", 2),
+    ("영업양도", "control", "영업양도", "neutral", 2),
+    ("주식교환", "control", "주식교환·이전", "neutral", 2),
+    ("분할합병", "control", "분할합병", "neutral", 2),
+    ("합병", "control", "합병", "neutral", 3),
+    # 지분변동 (대주주·임원)
+    ("주식등의대량보유상황보고", "insider", "5%룰 대량보유", "neutral", 2),
+    ("임원ㆍ주요주주특정증권", "insider", "임원·주요주주 보고", "neutral", 2),
+    ("임원ㆍ주요주주소유", "insider", "임원·주요주주 소유", "neutral", 2),
+    ("주식등의대량보유", "insider", "대량보유 변동", "neutral", 1),
+]
+
+
+def classify_governance(title: str) -> Optional[dict]:
+    """주주환원·지배구조 공시 분류 → {cat, label, sign, importance} 또는 None.
+
+    자사주 매입/소각(주주환원), 대주주·임원 지분변동(내부자 신호),
+    최대주주 변경·경영권(지배구조) 공시를 골라낸다.
+    ※ 제목 키워드 기반의 '사실 분류'이며 매수·매도 추천이 아니다."""
+    t = (title or "").replace(" ", "")
+    if not t:
+        return None
+    amended = t.startswith("[기재정정]") or t.startswith("[정정]") or "정정신고" in t
+    for kw, cat, label, sign, imp in _GOV_RULES:
+        if kw in t:
+            return {"cat": cat, "label": label, "sign": sign,
+                    "importance": imp, "amended": amended}
+    return None
+
+
 class DARTProvider(DataProvider):
     name = "dart"
     supported_kinds = (Kind.FINANCIALS.value,)
@@ -304,6 +354,56 @@ class DARTProvider(DataProvider):
                     continue
                 seen.add(rc)
                 out.append({**it, "earnings": info})
+        out.sort(key=lambda x: x.get("rcept_no", ""), reverse=True)
+        return out
+
+    @staticmethod
+    def _week_windows(bgn_date, end_date):
+        """구간을 주 단위(최대 7일)로 쪼갠 (bgn, end) 리스트.
+        전체 조회 시 페이지 한도에 걸려 앞부분이 잘리는 걸 막는다."""
+        windows = []
+        cur = bgn_date
+        while cur <= end_date:
+            nxt = min(cur + timedelta(days=6), end_date)
+            windows.append((cur, nxt))
+            cur = nxt + timedelta(days=1)
+        return windows
+
+    # 주주환원·지배구조 공시가 들어있는 DART 공시유형.
+    #   B = 주요사항보고서 → 자기주식취득/처분/소각, 합병, 영업양수도
+    #   D = 지분공시       → 대량보유(5%룰), 임원·주요주주 소유보고
+    #   I = 거래소공시     → 자기주식취득 결정, 최대주주 변경 등
+    GOV_PBLNTF_TY = ("B", "D", "I")
+
+    def governance_disclosures(self, now: datetime, bgn_date, end_date, *,
+                               max_pages: int = 20,
+                               page_count: int = 100) -> list[dict]:
+        """구간 내 주주환원·지배구조 공시만 모아 반환.
+
+        반환 항목 = recent_disclosures 항목 + {"gov": {cat, label, sign, ...}}
+        조회 실패 시 빈 리스트(호출부에서 graceful)."""
+        out: list[dict] = []
+        seen: set[str] = set()
+        windows = self._week_windows(bgn_date, end_date)
+        for ty in self.GOV_PBLNTF_TY:
+            rows = []
+            for w_bgn, w_end in windows:
+                try:
+                    rows.extend(self.recent_disclosures(
+                        now, bgn_date=w_bgn, end_date=w_end,
+                        pblntf_ty=ty, max_pages=max_pages, page_count=page_count,
+                        only_listed=True))
+                except Exception:
+                    continue
+            for it in rows:
+                rc = it.get("rcept_no", "")
+                if rc in seen:
+                    continue
+                info = classify_governance(it.get("title", ""))
+                if not info:
+                    continue
+                seen.add(rc)
+                out.append({**it, "gov": info})
         out.sort(key=lambda x: x.get("rcept_no", ""), reverse=True)
         return out
 

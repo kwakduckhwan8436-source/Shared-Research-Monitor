@@ -346,6 +346,38 @@ border-radius:8px;padding:7px 12px;font-size:12px;font-weight:500;font-family:va
 @keyframes btnFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}
 .btn-ipo{border-color:var(--amber-d);
   background:linear-gradient(135deg,rgba(231,173,72,.16),rgba(231,173,72,.05))}
+.btn-gov{border-color:rgba(90,156,248,.45);
+  background:linear-gradient(135deg,rgba(90,156,248,.16),rgba(90,156,248,.05))}
+.btn-gov:hover{border-color:var(--blue);
+  background:linear-gradient(135deg,rgba(90,156,248,.3),rgba(90,156,248,.12))}
+/* 스마트머니 신호 패널 */
+.gov-float{max-width:580px}
+.gov-chips{display:flex;gap:6px;padding:10px 14px 4px;flex-wrap:wrap;flex:none}
+.gov-chip{background:var(--panel3);border:1px solid var(--line2);color:var(--ink2);
+  border-radius:16px;padding:6px 12px;font-size:12px;cursor:pointer;
+  display:inline-flex;align-items:center;gap:5px;min-height:32px}
+.gov-chip.on{background:var(--blue);border-color:var(--blue);color:#06172f;font-weight:700}
+.gov-chip-n{background:rgba(0,0,0,.18);border-radius:9px;padding:0 6px;font-size:10.5px;font-weight:700}
+.gov-chip.on .gov-chip-n{background:rgba(255,255,255,.28)}
+.gov-list{display:flex;flex-direction:column}
+.gov-item{padding:11px 14px;border-bottom:1px solid var(--line);cursor:pointer;
+  transition:background .12s}
+.gov-item:hover{background:var(--panel2)}
+.gov-top{display:flex;align-items:center;gap:7px;margin-bottom:4px;flex-wrap:wrap}
+.gov-badge{font-size:11.5px;font-weight:700;padding:2px 9px;border-radius:6px;white-space:nowrap}
+.gov-badge.gov-pos{background:rgba(45,212,191,.15);color:var(--teal);border:1px solid rgba(45,212,191,.3)}
+.gov-badge.gov-neg{background:rgba(231,111,111,.15);color:#e76f6f;border:1px solid rgba(231,111,111,.3)}
+.gov-badge.gov-neu{background:rgba(90,156,248,.13);color:var(--blue);border:1px solid rgba(90,156,248,.28)}
+.gov-amend{font-size:10px;color:var(--muted);border:1px solid var(--line2);
+  border-radius:5px;padding:1px 6px}
+.gov-cat-ic{margin-left:auto;font-size:14px;opacity:.75}
+.gov-mid{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.gov-date{font-size:11px;color:var(--dim);margin-left:auto}
+.gov-link{display:inline-block;margin-top:5px;font-size:11.5px;color:var(--blue);
+  text-decoration:none}
+.gov-link:hover{text-decoration:underline}
+body.light .gov-chip.on{color:#fff}
+body.light .btn-gov{border-color:rgba(30,90,200,.4)}
 .btn-ipo:hover{border-color:var(--amber);
   background:linear-gradient(135deg,rgba(231,173,72,.3),rgba(231,173,72,.12))}
 /* 배지(청약 예정 개수) */
@@ -497,6 +529,13 @@ gap:3px;padding:6px 0;cursor:pointer;color:var(--muted);min-height:48px}
 .tr-stk-vs{font-size:10px}
 .ipo-float{width:96vw !important;left:2vw !important;right:2vw !important;max-width:96vw !important}
 .ipo-fbtn{font-size:13.5px;padding:10px 16px;min-height:42px}
+/* 스마트머니 패널: 폰 전체폭 + 칩 터치 크게 */
+.gov-float{width:96vw !important;left:2vw !important;right:2vw !important;max-width:96vw !important}
+.gov-chip{font-size:12.5px;padding:8px 13px;min-height:38px}
+.gov-item{padding:13px 14px}
+.gov-badge{font-size:12px}
+.gov-mid{font-size:13px}
+.gov-link{font-size:12.5px;padding:4px 0;min-height:30px}
 .ipo-corp{font-size:16px}
 .ipo-row{font-size:14px}
 .ipo-k{width:70px;font-size:12px}
@@ -1912,7 +1951,7 @@ cal: null, calY: 0, calM: 0, calFilter: {}, calAdminOpen: false, calAdminList: n
 glossaryOpen: false, glossary: null, glossQ: "", glossCat: "전체", dguideOpen: false, dguide: null,
 startOpen: false, startGuide: null, startTab: "guide",
 stock: null, stockLoading: false, live: null, newsTs: "",
-feedDisc: null, feedNews: null, feedReports: null, feedPolicy: null, feedHot: null, feedIpo: null, ipoOpen: false, ipoMin: false, ipoPos: null, ipoFilter: "up", tradeOpen: false, tradeMin: false, tradePos: null, tradeData: null, policyFilter: "all", hotOpen: false, hotMin: false, hotPos: null, finOpen: false, finMin: false, finPos: null, finRank: null, finSort: "vscore", finSector: "", finSectors: null, finScope: "major", finMarket: "", finPeriod: "annual", finLoading: false, finPreset: "", vsHelpOpen: false, _favs: null, moreOpen: false, stockOpen: false, stockMin: false, stockPos: null, stockSym: "", stockName: "", stockDetail: null, stockFilter: "", screenOpen: false, screenCond: {}, sectorAvg: null, welcomeHidden: false, searchQ: "", searchOpen: false, searchResults: [], chatOpen: (typeof window!=="undefined" && window.innerWidth>760), chatMin: false, chatPos: null, modal: false, reports: null, reportsLoading: false,
+feedDisc: null, feedNews: null, feedReports: null, feedPolicy: null, feedHot: null, feedIpo: null, ipoOpen: false, ipoMin: false, ipoPos: null, ipoFilter: "up", tradeOpen: false, tradeMin: false, tradePos: null, tradeData: null, policyFilter: "all", hotOpen: false, hotMin: false, hotPos: null, govOpen: false, govMin: false, govPos: null, feedGov: null, govCat: "", finOpen: false, finMin: false, finPos: null, finRank: null, finSort: "vscore", finSector: "", finSectors: null, finScope: "major", finMarket: "", finPeriod: "annual", finLoading: false, finPreset: "", vsHelpOpen: false, _favs: null, moreOpen: false, stockOpen: false, stockMin: false, stockPos: null, stockSym: "", stockName: "", stockDetail: null, stockFilter: "", screenOpen: false, screenCond: {}, sectorAvg: null, welcomeHidden: false, searchQ: "", searchOpen: false, searchResults: [], chatOpen: (typeof window!=="undefined" && window.innerWidth>760), chatMin: false, chatPos: null, modal: false, reports: null, reportsLoading: false,
 chat: [], chatLastId: 0, chatUser: "익명", reacts: {}, indices: null, fx: null, corpOpen: false, corpTab: "dividend", corpData: null, corpMin: false, corpPos: null, corpQuery: "", calcOpen: false, calcTab: "yield", calcVals: {}, calcMin: false, calcPos: null, calcW: 520, recsCache: {},
 notice: "", emojiOpen: false, briefing: null, briefingOpen: false, presence: {site:0,chat:0},
 mflowOpen: false, mflow: null, mflowMkt: "KOSPI",
@@ -1996,6 +2035,10 @@ return '<div class="top">'+
 '<span class="meta-divider"></span>'+
 (pub?'':'<button class="btn bell" data-action="alerts-toggle">🔔'+(state.alertUnseen>0?'<span class="bell-badge">'+(state.alertUnseen>99?'99+':state.alertUnseen)+'</span>':'')+'</button>')+
 '<button class="btn" data-action="hotdisc">🔥 주요공시</button>'+
+'<button class="btn btn-hi btn-gov" data-action="gov" data-tip="🐋 스마트머니 신호|자사주 매입·소각, 대주주·임원 지분변동, 최대주주 변경을 한곳에. 고수들이 보는 공시를 모았습니다.">'+
+  '<span class="btn-hi-ic">🐋</span> 스마트머니'+
+  '<span class="btn-new">NEW</span>'+
+'</button>'+
 '<button class="btn btn-hi btn-ipo" data-action="ipo" data-tip="🎈 공모주 청약 일정|청약일·공모가·주관사를 한눈에. 청약 예정 종목은 D-day로 표시됩니다.">'+
   '<span class="btn-hi-ic">🎈</span> 공모주'+
   (state.feedIpo&&state.feedIpo.upcoming?('<span class="btn-badge">'+state.feedIpo.upcoming+'</span>'):'')+
@@ -3493,6 +3536,59 @@ return '<div class="floatwrap'+mini+'"><div class="modal hot-float float-win'+mi
   ))+
   '</div></div>';
 }
+function govItemHTML(it){
+  var signCls = it.sign==="positive"?"gov-pos":(it.sign==="negative"?"gov-neg":"gov-neu");
+  var signIc = it.sign==="positive"?"▲":(it.sign==="negative"?"▼":"◆");
+  var catIc = {buyback:"🔁",insider:"🔍",control:"👑"}[it.cat]||"📄";
+  var d = it.published_at? esc(it.published_at):"";
+  var sym = it.symbol?('<span class="hot-corp">'+esc(it.corp)+' · '+esc(it.symbol)+'</span>')
+                     :('<span class="hot-corp">'+esc(it.corp)+'</span>');
+  var stk = it.symbol?(' data-action="stock-detail" data-sym="'+esc(it.symbol)+'" data-name="'+esc(it.corp)+'"'):'';
+  return '<div class="gov-item"'+stk+'>'+
+    '<div class="gov-top">'+
+      '<span class="gov-badge '+signCls+'">'+signIc+' '+esc(it.label)+'</span>'+
+      (it.amended?'<span class="gov-amend">정정</span>':'')+
+      '<span class="gov-cat-ic">'+catIc+'</span>'+
+    '</div>'+
+    '<div class="gov-mid">'+sym+(d?('<span class="gov-date">'+d+'</span>'):'')+'</div>'+
+    (it.url?('<a class="gov-link" href="'+esc(it.url)+'" target="_blank" rel="noopener" data-stop="1" onclick="event.stopPropagation()">공시 원문 →</a>'):'')+
+  '</div>';
+}
+function govModalHTML(){
+if(!state.govOpen) return '';
+var f=state.feedGov;
+var cats=[["","전체"],["buyback","🔁 자사주"],["insider","🔍 지분변동"],["control","👑 경영권"]];
+var cnt=(f&&f.counts)||{};
+var chips=cats.map(function(c){
+  var on=(state.govCat||"")===c[0];
+  var badge="";
+  if(c[0] && cnt[c[0]]!=null){ badge='<span class="gov-chip-n">'+cnt[c[0]]+'</span>'; }
+  return '<button class="gov-chip'+(on?" on":"")+'" data-action="gov-cat" data-cat="'+c[0]+'">'+c[1]+badge+'</button>';
+}).join("");
+var body;
+if(!f){ body='<div class="adm-load">불러오는 중…</div>'; }
+else if(f.error){ body='<div class="ce-note">'+esc(f.error)+'</div>'; }
+else if(!f.items || !f.items.length){ body='<div class="ce-note">'+esc((f&&f.note)||"해당 기간에 표시할 공시가 없습니다.")+'</div>'; }
+else {
+  body='<div class="gov-list">'+f.items.map(function(it){ return govItemHTML(it); }).join("")+'</div>'+
+    '<div class="policy-attr">🐋 '+esc(f.attribution||"금융감독원 전자공시(DART) · 제목·링크만 · 투자권유 아님")+'<br>최근 30일 · 자사주 매입/소각은 주주환원, 지분변동·경영권은 방향 중립(사실 분류)</div>';
+}
+var mini=state.govMin?' ce-min':'';
+var pos=state.govPos;
+var style='max-width:580px;width:580px;'+
+  (pos?('position:fixed;left:'+pos.x+'px;top:'+pos.y+'px;margin:0;transform:none;'):'');
+return '<div class="floatwrap'+mini+'"><div class="modal hot-float gov-float float-win'+mini+'" data-stop="1" data-poskey="govPos" style="'+style+'">'+
+  '<div class="modal-h float-drag"><b>🐋 스마트머니 신호</b>'+
+    '<span class="ce-winbtns">'+
+      '<button class="ce-winbtn" data-action="gov-min" title="'+(state.govMin?'확장':'축소')+'">'+(state.govMin?'⊡':'⊟')+'</button>'+
+      '<button class="ce-winbtn" data-action="gov-close" title="닫기">✕</button>'+
+    '</span></div>'+
+  (state.govMin?'':(
+    '<div class="gov-chips">'+chips+'</div>'+
+    '<div class="feedbody hot-body">'+body+'</div>'
+  ))+
+  '</div></div>';
+}
 function calcModalHTML(){
 if(!state.calcOpen) return '';
 var TABS=[["yield","💵 배당수익률"],["avg","📊 평단가"],["target","🎯 목표가"],
@@ -4559,6 +4655,7 @@ dguideModalHTML()+
 startGuideModalHTML()+
 corpEventsModalHTML()+
 hotDiscModalHTML()+
+govModalHTML()+
 financeModalHTML()+
 chatFloatHTML()+
 tradeModalHTML()+
@@ -4575,6 +4672,15 @@ if(window.__ensureWinHandles) window.__ensureWinHandles();
 }
 // ---------- data ----------
 function getJSON(u,o){ return fetch(API+u,o).then(function(r){ if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); }); }
+function loadGov(){
+  var cat = state.govCat||"";
+  getJSON("/api/feed/governance?days=30&limit=80"+(cat?("&cat="+cat):"")).then(function(j){
+    state.feedGov=j; if(state.govOpen) render();
+  }).catch(function(){
+    if(!state.feedGov){ state.feedGov={error:"불러오기 실패"}; }
+    if(state.govOpen) render();
+  });
+}
 function loadHealth(){
 return getJSON("/api/health").then(function(j){ state.health=j; state.mode="live"; })
 .catch(function(){ state.mode="sample"; state.health=null;
@@ -5797,6 +5903,15 @@ else if(a==="hotdisc"){
   getJSON("/api/feed/hot_disclosures?limit=30").then(function(j){ state.feedHot=j; if(state.hotOpen) render(); }).catch(function(){ if(!state.feedHot){ state.feedHot={error:"불러오기 실패"}; } if(state.hotOpen) render(); });
 }
 else if(a==="hot-close"){ state.hotOpen=false; render(); }
+else if(a==="gov"){
+  state.govOpen=true; state.govMin=false; render();
+  loadGov();
+}
+else if(a==="gov-close"){ state.govOpen=false; render(); }
+else if(a==="gov-min"){ state.govMin=!state.govMin; render(); }
+else if(a==="gov-cat"){
+  state.govCat = (t.getAttribute("data-cat")||""); render(); loadGov();
+}
 else if(a==="hot-min"){ state.hotMin=!state.hotMin; render(); }
 else if(a==="calc"){ state.calcOpen=true; state.calcMin=false; state.calcTab=state.calcTab||"yield"; render(); }
 else if(a==="calc-close"){ if(t.getAttribute("data-stop"))return; state.calcOpen=false; render(); }
