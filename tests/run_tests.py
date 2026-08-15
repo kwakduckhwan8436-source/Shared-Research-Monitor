@@ -42,6 +42,7 @@ TEST_MODULES = [
     "tests.test_screener",
     "tests.test_board_mflow",
     "tests.test_earnings_calendar",
+    "tests.test_pwa_assets",
 ]
 
 

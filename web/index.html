@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>모두의 리서치 모니터 — 증시 캘린더·전자공시·증시 용어사전</title>
 <meta name="description" content="증시 캘린더(휴장일·만기일·배당락·금통위·FOMC), 전자공시(DART) 모니터링, 증시 용어 사전, 공시 읽는 법 가이드. 투자 참고용 정보 서비스." />
 <meta name="keywords" content="증시 캘린더, 전자공시, DART, 증시 용어, 공시 읽는 법, 휴장일, 선물옵션 만기일, 배당락, 금통위, FOMC" />
@@ -263,10 +263,17 @@ border-radius:8px;padding:7px 0;font-size:12px;font-weight:600;cursor:pointer}
 .themeseg .thm:hover{color:var(--ink)}
 .themeseg .thm.on{background:var(--teal);border-color:var(--teal);color:#fff;font-weight:700}
 *{box-sizing:border-box}
-html,body{margin:0;height:100%}
+html,body{margin:0;height:100%;-webkit-text-size-adjust:100%;text-size-adjust:100%}
 body{background:var(--bg);color:var(--ink);font-family:var(--sans);
 font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
-#root{height:100vh;display:flex;flex-direction:column;overflow:hidden}
+#root{height:100vh;height:100dvh;display:flex;flex-direction:column;overflow:hidden}
+/* 버튼·링크·탭 요소 터치 시 iOS 회색 하이라이트 제거(자체 :active 스타일 사용) */
+button,a,[data-action],.mnav-btn,.qchip,.cal-fchip,.btn{-webkit-tap-highlight-color:transparent}
+/* 접근성: 애니메이션 최소화를 켠 사용자에겐 전환/애니메이션을 끔 */
+@media (prefers-reduced-motion:reduce){
+*,*::before,*::after{animation-duration:.001ms !important;animation-iteration-count:1 !important;
+transition-duration:.001ms !important;scroll-behavior:auto !important}
+}
 ::-webkit-scrollbar{width:10px;height:10px}
 ::-webkit-scrollbar-thumb{background:var(--line2);border-radius:5px}
 ::-webkit-scrollbar-track{background:transparent}
@@ -445,7 +452,7 @@ gap:3px;padding:6px 0;cursor:pointer;color:var(--muted);min-height:48px}
 .col-screener{padding:13px}
 /* 채팅: 폰에서 크고 터치 쉽게 */
 /* 채팅 탭은 화면 높이에 맞춰 메시지만 내부 스크롤(입력창은 하단 고정) */
-.main.mtab-chat .mpane[data-pane="chat"]{height:calc(100vh - 180px) !important;min-height:calc(100vh - 180px) !important}
+.main.mtab-chat .mpane[data-pane="chat"]{height:calc(100dvh - 180px) !important;min-height:calc(100dvh - 180px) !important}
 .main.mtab-chat .chatbodywrap{flex:1 !important;min-height:0 !important;overflow:hidden}
 .main.mtab-chat .chatbody2{overflow-y:auto !important;height:auto !important;-webkit-overflow-scrolling:touch}
 .chatbar{position:sticky;bottom:0;padding:11px 12px;gap:7px}
@@ -540,6 +547,19 @@ gap:3px;padding:6px 0;cursor:pointer;color:var(--muted);min-height:48px}
 .brand{font-size:15px}
 .cbubblewrap{max-width:86%}
 .feedhead{font-size:14px}
+}
+/* 가로모드 폰(높이가 매우 낮음): 하단 고정 요소가 화면을 잡아먹지 않게 */
+@media (max-width:900px) and (max-height:500px) and (orientation:landscape){
+.mobilenav{position:static;box-shadow:none}   /* 하단 고정 해제 → 스크롤에 포함 */
+.main{padding-bottom:0}
+.main.mtab-chat .mpane[data-pane="chat"]{height:auto !important;min-height:60vh !important}
+.floatwin,.sd-float,.tr-float,.ipo-float,.hot-float{top:6px !important;max-height:92vh !important}
+.welcome-banner{display:none}   /* 좁은 세로 공간 확보 */
+}
+/* 초대형 모니터: 본문이 지나치게 넓게 늘어나지 않도록 중앙 정렬 상한.
+   상단 바는 전체 폭을 유지하고(배경 그라디언트가 끊기지 않게) 본문만 중앙 정렬. */
+@media (min-width:1900px){
+.main{max-width:1860px;margin-left:auto;margin-right:auto;width:100%}
 }
 .col-screener{background:var(--bg);overflow-y:auto;overflow-x:hidden;padding:14px}
 /* 리포트(위) + 공시(아래) 한 컬럼에 세로 스택 */
@@ -1604,6 +1624,28 @@ background:var(--panel);border:1px solid var(--line2);border-radius:10px;padding
 box-shadow:0 12px 36px rgba(0,0,0,.5);max-width:360px;cursor:pointer;animation:toastIn .25s ease}
 .toast-msg{font-size:12.5px;color:var(--ink)}
 @keyframes toastIn{from{transform:translateY(12px);opacity:0}to{transform:translateY(0);opacity:1}}
+/* PWA 설치 버튼 — 눈에 띄되 과하지 않게(테두리 강조) */
+.btn-install{border-color:var(--teal) !important;color:var(--teal) !important;font-weight:700}
+.btn-install:hover{background:var(--teal) !important;color:#06231f !important}
+body.light .btn-install{border-color:#13917d !important;color:#13917d !important}
+body.light .btn-install:hover{background:#13917d !important;color:#fff !important}
+/* PWA 업데이트 배너 — 하단 중앙 고정, 하단 탭바 위로 */
+.pwa-update{position:fixed;left:50%;transform:translateX(-50%);
+bottom:calc(16px + env(safe-area-inset-bottom));z-index:85;
+display:flex;align-items:center;gap:10px;
+background:var(--panel);border:1px solid var(--teal);border-radius:12px;
+padding:11px 14px;box-shadow:0 12px 36px rgba(0,0,0,.5);animation:toastIn .25s ease}
+.pwa-update-msg{font-size:13px;color:var(--ink);font-weight:600;white-space:nowrap}
+.pwa-update-btn{background:var(--teal);color:#06231f;border:none;border-radius:8px;
+padding:7px 14px;font-size:12.5px;font-weight:700;cursor:pointer;min-height:36px}
+.pwa-update-x{background:none;border:none;color:var(--muted);font-size:12px;
+cursor:pointer;padding:6px 8px;min-height:36px}
+body.light .pwa-update-btn{background:#13917d;color:#fff}
+@media (max-width:760px){
+/* 폰: 하단 탭바(70px)와 겹치지 않게 위로 */
+.pwa-update{bottom:calc(78px + env(safe-area-inset-bottom));width:92%;justify-content:center}
+.btn-install{font-size:12.5px;padding:7px 11px;min-height:38px}
+}
 .hold-sum{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:6px 0 14px}
 .hs{background:var(--panel3);border:1px solid var(--line2);border-radius:8px;padding:8px 10px}
 .hs-k{font-size:10.5px;color:var(--muted)}
@@ -1881,7 +1923,7 @@ chatSound: false, chatUnread: 0, chatAtBottom: true, ad: null, adGuide: false,
 theme: (function(){ try{ return localStorage.getItem("reco_theme")||"dark"; }catch(e){ return "dark"; } })(),
 btModal: false, btLoading: false, btData: null, btHorizon: "", btCache: {},
 alertSeen: {}, alertList: [], alertUnseen: 0, alertPanel: false,
-alertBaselined: false, notifyOn: false, toast: null,
+alertBaselined: false, notifyOn: false, toast: null, pwaInstallable: false, pwaUpdate: false,
 holdModal: false, holdLoading: false, holdData: null,
 themeModal: false, themeLoading: false, themeData: null, themeWindow: 5,
 regime: null, regimeModal: false,
@@ -1962,6 +2004,7 @@ return '<div class="top">'+
   '<span class="btn-hi-ic">🚢</span> 수출동향'+
   '<span class="btn-new">NEW</span>'+
 '</button>'+
+(state.pwaInstallable && !pub ? '<button class="btn btn-install" data-action="pwa-install" data-tip="📲 앱 설치|홈 화면에 추가하면 앱처럼 전체화면으로 빠르게 실행됩니다.">📲 앱 설치</button>' : '')+
 '<button class="btn" data-action="chat-toggle">💬 채팅</button>'+
 '<button class="btn btn-more" data-action="more-menu">⋯ 더보기</button>'+
 '<span class="meta-divider"></span>'+
@@ -3749,6 +3792,14 @@ body:JSON.stringify(payload)})
 .then(function(){ loadAdminReports(); })
 .catch(function(){ alert("처리 중 오류가 발생했습니다."); });
 }
+function pwaUpdateHTML(){
+if(!state.pwaUpdate) return "";
+return '<div class="pwa-update">'+
+'<span class="pwa-update-msg">🔄 새 버전이 있습니다</span>'+
+'<button class="pwa-update-btn" data-action="pwa-update">새로고침</button>'+
+'<button class="pwa-update-x" data-action="pwa-update-dismiss">나중에</button>'+
+'</div>';
+}
 function toastHTML(){
 if(!state.toast) return "";
 var a=state.toast, lv=a.level==="up"?"al-up":(a.level==="down"?"al-down":"al-info");
@@ -4517,7 +4568,8 @@ stockDetailHTML()+
 screenModalHTML()+
 moreMenuHTML()+
 calcModalHTML()+
-toastHTML();
+toastHTML()+
+pwaUpdateHTML();
 // 열려있는 모든 모달에 드래그·리사이즈 핸들 자동 부착
 if(window.__ensureWinHandles) window.__ensureWinHandles();
 }
@@ -5634,6 +5686,21 @@ else if(a==="sd-filter"){ state.stockFilter=t.getAttribute("data-t")||""; render
 else if(a==="stock-close"){ state.stockOpen=false; render(); }
 else if(a==="stock-min"){ state.stockMin=!state.stockMin; render(); }
 else if(a==="chat-toggle"){ state.chatOpen=!state.chatOpen; state.chatMin=false; render(); }
+else if(a==="pwa-install"){
+  if(_deferredPrompt){
+    _deferredPrompt.prompt();
+    _deferredPrompt.userChoice.then(function(){
+      _deferredPrompt=null; state.pwaInstallable=false; render();
+    });
+  }
+}
+else if(a==="pwa-update"){
+  // 대기 중인 새 워커에게 활성화를 지시 → controllerchange 에서 자동 새로고침
+  if(_swReg && _swReg.waiting){ _swReg.waiting.postMessage("SKIP_WAITING"); }
+  else { window.location.reload(); }
+  state.pwaUpdate=false;
+}
+else if(a==="pwa-update-dismiss"){ state.pwaUpdate=false; render(); }
 else if(a==="chat-close"){ state.chatOpen=false; render(); }
 else if(a==="chat-min"){ state.chatMin=!state.chatMin; render(); }
 else if(a==="finance"){
@@ -6054,12 +6121,41 @@ state.watchlist=(j.symbols||[]); render();
 }).catch(function(){ state.watchlist=[]; });
 }
 loadHealth().then(loadCalib).then(function(){ startFeeds(); loadAd(); loadWatchlist(); loadCalendar(); });
-// PWA: 서비스워커 등록(정적 셸 캐시, 데이터는 항상 최신)
+// PWA: 서비스워커 등록(정적 셸 캐시, 데이터는 항상 최신) + 설치/업데이트 처리
+var _deferredPrompt = null;   // beforeinstallprompt 이벤트 보관
+var _swReg = null;
 if("serviceWorker" in navigator){
 window.addEventListener("load",function(){
-navigator.serviceWorker.register("/sw.js").catch(function(){});
+navigator.serviceWorker.register("/sw.js").then(function(reg){
+_swReg = reg;
+// 새 워커가 대기 상태가 되면(=새 버전 배포됨) 사용자에게 알림
+reg.addEventListener("updatefound",function(){
+var nw = reg.installing;
+if(!nw) return;
+nw.addEventListener("statechange",function(){
+// 이미 페이지를 제어하는 워커가 있는 상태에서 새 워커가 설치 완료 → 업데이트 존재
+if(nw.state==="installed" && navigator.serviceWorker.controller){
+state.pwaUpdate = true; render();
+}
+});
+});
+}).catch(function(){});
+// 새 워커가 제어권을 넘겨받으면 페이지를 한 번 새로고침(새 셸 반영)
+var _reloaded = false;
+navigator.serviceWorker.addEventListener("controllerchange",function(){
+if(_reloaded) return; _reloaded = true; window.location.reload();
+});
 });
 }
+// '홈 화면에 추가' 가능 시점을 브라우저가 알려주면 버튼을 노출
+window.addEventListener("beforeinstallprompt",function(e){
+e.preventDefault(); _deferredPrompt = e;
+state.pwaInstallable = true; render();
+});
+// 설치 완료되면 버튼 숨김
+window.addEventListener("appinstalled",function(){
+_deferredPrompt = null; state.pwaInstallable = false; render();
+});
 // ================= sample fallback =================
 function sampleData(){
 var mk=function(sym,name,score,conf,cov,flags,fired,abst,ref){

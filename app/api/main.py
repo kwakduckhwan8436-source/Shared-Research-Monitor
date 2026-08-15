@@ -689,6 +689,16 @@ def create_app(cfg: Optional[Config] = None):
                     return _serve
                 app.get("/" + _fn)(_mk())
 
+        # 서비스워커(sw.js)는 반드시 no-cache 로 서빙한다.
+        #   브라우저가 sw.js 를 캐시하면 새 버전을 배포해도 옛 워커가 계속 돌아
+        #   사용자가 업데이트를 영영 못 받는다(PWA 의 대표적 함정).
+        _sw = os.path.join(web_dir, "sw.js")
+        if os.path.exists(_sw):
+            @app.get("/sw.js")
+            def _serve_sw() -> FileResponse:
+                return FileResponse(_sw, media_type="application/javascript",
+                                    headers=_NOCACHE)
+
         # 나머지 정적 파일(있다면)
         app.mount("/", StaticFiles(directory=web_dir, html=True), name="web")
     return app
