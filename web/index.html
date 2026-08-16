@@ -301,18 +301,18 @@ background:linear-gradient(180deg,#161d27,#121821);border-bottom:1px solid var(-
 .themebtn{flex:none;background:var(--panel2);border:1px solid var(--line2);color:var(--ink2);
 border-radius:18px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer;margin-left:14px;white-space:nowrap}
 .themebtn:hover{border-color:var(--teal);color:var(--ink)}
-.adslot{display:flex;align-items:center;justify-content:center;min-width:150px;max-width:230px;
-min-height:44px;height:44px;margin:0;padding:0;border:1px solid var(--line2);border-radius:10px;
-background:#121b28;overflow:hidden;flex:0 0 auto;order:3}
+.adslot{display:flex;align-items:center;justify-content:center;flex:0 0 auto;
+  height:36px;width:auto;padding:0;border:1px solid var(--line2);border-radius:8px;
+  background:#121b28;overflow:hidden;order:0}
 .adslot a{color:var(--ink2);font-size:13px;text-decoration:none;display:flex;align-items:center;gap:8px}
 .adslot a:hover{color:#fff}
 .adslot span{color:var(--ink2);font-size:13px}
 .adslot img{max-height:60px;max-width:100%;display:block;border-radius:8px}
 .adslot .ad-house-img{max-height:none}
-.ad-house{display:block;width:100%;height:100%;text-decoration:none;border-radius:9px;overflow:hidden;
+.ad-house{display:block;height:100%;text-decoration:none;border-radius:8px;overflow:hidden;
   transition:transform .12s,box-shadow .12s}
 .ad-house:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(0,0,0,.3)}
-.ad-house-img{width:100%;height:100%;object-fit:cover;display:block;border-radius:9px}
+.ad-house-img{height:100%;width:auto;max-width:none;object-fit:contain;display:block;border-radius:8px}
 /* 섹터 히트맵 */
 .hm-lead{font-size:12px;color:var(--ink2);line-height:1.55;padding:10px 14px 4px}
 .hm-lead b{color:var(--ink)}
@@ -493,9 +493,9 @@ gap:3px;padding:6px 0;cursor:pointer;color:var(--muted);min-height:48px}
 .btn-badge{min-width:17px;height:17px;font-size:10px}
 .btn-new{font-size:8.5px;padding:2px 5px}
 .uitip{display:none !important}   /* 폰에선 마우스오버가 없으니 툴팁 숨김 */
-.adslot{display:flex;order:5;width:100%;max-width:100%;min-width:0;margin:2px 0 0;height:auto;min-height:0;flex:none;padding:0;border:none;background:transparent}
-.adslot .ad-house{border-radius:8px;height:auto}
-.adslot .ad-house-img{border-radius:8px;height:auto;object-fit:contain}
+.adslot{display:flex;order:5;width:100%;max-width:100%;min-width:0;margin:2px 0 0;height:auto;min-height:0;flex:none;padding:0;border:none;background:transparent;justify-content:flex-start}
+.adslot .ad-house{border-radius:8px;height:auto;width:100%;max-width:460px}
+.adslot .ad-house-img{border-radius:8px;height:auto;width:100%;object-fit:contain}
 .meta-divider{display:none}
 /* 모달: 폰에서 전체화면에 가깝게 */
 .modal, .legalmodal, .adminmodal, .floatwin, .glossmodal{max-width:100% !important;width:96% !important}
@@ -2107,8 +2107,8 @@ var ms=marketStatus();
 return '<div class="top">'+
 '<div class="brand">모두의 <b>리서치 모니터</b>'+
 '<small>조건으로 저평가 우량주 찾기 · 공시·뉴스·재무 한눈에 · 투자판단과 책임은 본인에게 있습니다</small></div>'+
-'<div class="adslot" id="adslot">'+adHTML()+'</div>'+
 '<div class="top-meta">'+
+'<div class="adslot" id="adslot">'+adHTML()+'</div>'+
 '<div class="topsearch"><input class="topsearch-in" id="topsearch" type="text" placeholder="🔍 종목 검색 (예: 삼성전자)" autocomplete="off" value="'+esc(state.searchQ||"")+'">'+searchResultsHTML()+'</div>'+
 (pub?'':'<span id="mktpill" class="pill mktpill '+ms.cls+'">'+esc(ms.label)+'</span>')+
 (pub?'':regimePillHTML())+

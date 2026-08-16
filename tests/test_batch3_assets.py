@@ -32,12 +32,15 @@ def test_briefing_wired_in_menu():
     assert 'a:"briefing"' in h or "a:\"briefing\"" in h
 
 
-def test_banner_minimal_and_layout_fixed():
+def test_banner_repositioned_and_readable():
     h = _html()
-    # 부의 로드맵 배너 최소화(230px)
-    assert "max-width:230px" in h
-    # 상단바 레이아웃 재정렬(top-meta 가 가운데를 채움)
-    assert "flex:1;justify-content:flex-end;order:2" in h
+    # 배너가 top-meta 안(검색창 좌측)으로 이동했는지
+    i_meta = h.find('<div class="top-meta">')
+    i_ad = h.find('<div class="adslot"', i_meta)
+    i_search = h.find('<div class="topsearch">', i_meta)
+    assert i_meta < i_ad < i_search, "배너가 검색창 좌측으로 이동하지 않음"
+    # 글씨 안 잘리게 contain 으로 표시하는지
+    assert "object-fit:contain" in h
     # 여백 유발하던 초대형 상한은 여전히 없음
     assert "min-width:1900px" not in h
 

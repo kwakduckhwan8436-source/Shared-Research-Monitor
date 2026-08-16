@@ -44,9 +44,8 @@ def test_wide_margin_cap_removed():
     assert "min-width:1900px" not in html, "여백 유발 규칙이 아직 남아있음"
 
 
-def test_roadmap_banner_shortened():
+def test_roadmap_banner_readable():
     html = _read(os.path.join(WEB, "index.html"))
-    # adslot 최대폭이 축소됐는지(기존 560px → 이후 배치에서 더 축소)
-    import re
-    m = re.search(r"\.adslot\{[^}]*max-width:(\d+)px", html)
-    assert m and int(m.group(1)) <= 380, "배너 최대폭이 충분히 줄지 않음"
+    # 배너는 높이 기준으로 크기가 정해지고(잘림 방지), 이미지는 contain 으로 표시
+    assert ".adslot{" in html
+    assert "object-fit:contain" in html, "배너 이미지가 잘리지 않게 contain 이어야 함"
