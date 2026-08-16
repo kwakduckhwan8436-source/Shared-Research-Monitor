@@ -44,6 +44,8 @@ TEST_MODULES = [
     "tests.test_earnings_calendar",
     "tests.test_pwa_assets",
     "tests.test_governance",
+    "tests.test_batch2_assets",
+    "tests.test_batch3_assets",
 ]
 
 

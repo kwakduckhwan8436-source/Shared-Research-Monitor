@@ -17,7 +17,7 @@ from typing import Any, Optional
 
 from app.llm import explain as explain_mod
 
-BUILD_VERSION = "2026.08.16-smartmoney1"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
+BUILD_VERSION = "2026.08.16-batch3"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
 
 
 def _rsi_series(values: list, period: int = 14) -> list:
@@ -2353,6 +2353,59 @@ def register_routes(app: Any, ctx: Any) -> None:
                     entry["count"] = max(entry["count"], len(vals))
             out[sec] = entry
         return {"sectors": out, "scope": scope}
+
+    @app.get("/api/finance/sector_heatmap")
+    def finance_sector_heatmap() -> dict:
+        """업종별 저평가 히트맵 — 각 업종의 평균 vscore(저평가 우량 점수)와
+        종목 수, 대표 지표(중앙값 PER·PBR·ROE)를 반환.
+        vscore 순위표와 같은 캐시를 재사용(추가 조회 없음). 사실 집계이며 추천 아님."""
+        rows = None
+        for sc in ("all", "wide", "major"):
+            for pr in ("annual", "latest"):
+                c = _finance_cache.get(sc + ":" + pr)
+                if c and c.get("rows"):
+                    rows = c["rows"]
+                    break
+            if rows:
+                break
+        if not rows:
+            return {"sectors": [], "note": "재무 데이터가 아직 준비되지 않았습니다."}
+        import statistics as _st
+        by_sec = {}
+        for r in rows:
+            sec = r.get("sector") or ""
+            if not sec:
+                continue
+            b = by_sec.setdefault(sec, {"vs": [], "per": [], "pbr": [], "roe": [],
+                                        "top": None})
+            vs = r.get("vscore")
+            if vs is not None:
+                b["vs"].append(vs)
+                # 업종 내 최고 점수 종목 기억(대표 종목 표시용)
+                if b["top"] is None or vs > b["top"]["vscore"]:
+                    b["top"] = {"name": r.get("name", ""), "symbol": r.get("symbol", ""),
+                                "vscore": vs}
+            for k in ("per", "pbr", "roe"):
+                v = r.get(k)
+                if v is not None:
+                    b[k].append(v)
+        out = []
+        for sec, b in by_sec.items():
+            if not b["vs"]:
+                continue
+            out.append({
+                "sector": sec,
+                "avg_vscore": round(sum(b["vs"]) / len(b["vs"]), 1),
+                "count": len(b["vs"]),
+                "per": round(_st.median(b["per"]), 2) if b["per"] else None,
+                "pbr": round(_st.median(b["pbr"]), 2) if b["pbr"] else None,
+                "roe": round(_st.median(b["roe"]), 2) if b["roe"] else None,
+                "top": b["top"],
+            })
+        # 저평가(높은 vscore)가 위로 오도록 정렬
+        out.sort(key=lambda x: x["avg_vscore"], reverse=True)
+        return {"sectors": out,
+                "attribution": "DART 재무 기반 저평가 점수 집계 · 투자권유 아님"}
 
     @app.get("/api/feed/policy")
     def feed_policy(limit: int = 30) -> dict:
