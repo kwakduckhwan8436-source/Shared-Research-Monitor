@@ -302,17 +302,19 @@ background:linear-gradient(180deg,#161d27,#121821);border-bottom:1px solid var(-
 border-radius:18px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer;margin-left:14px;white-space:nowrap}
 .themebtn:hover{border-color:var(--teal);color:var(--ink)}
 .adslot{display:flex;align-items:center;justify-content:center;flex:0 0 auto;
-  height:36px;width:auto;padding:0;border:1px solid var(--line2);border-radius:8px;
+  height:36px;width:auto;max-width:300px;padding:0;border:1px solid var(--line2);border-radius:8px;
   background:#121b28;overflow:hidden;order:0}
-.adslot a{color:var(--ink2);font-size:13px;text-decoration:none;display:flex;align-items:center;gap:8px}
+.adslot a{color:var(--ink2);font-size:12.5px;text-decoration:none;display:flex;align-items:center;gap:6px;
+  padding:0 10px;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .adslot a:hover{color:#fff}
-.adslot span{color:var(--ink2);font-size:13px}
+.adslot span{color:var(--ink2);font-size:12.5px;padding:0 10px;max-width:100%;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .adslot img{max-height:60px;max-width:100%;display:block;border-radius:8px}
 .adslot .ad-house-img{max-height:none}
-.ad-house{display:block;height:100%;text-decoration:none;border-radius:8px;overflow:hidden;
+.ad-house{display:block;height:100%;max-width:100%;text-decoration:none;border-radius:8px;overflow:hidden;
   transition:transform .12s,box-shadow .12s}
 .ad-house:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(0,0,0,.3)}
-.ad-house-img{height:100%;width:auto;max-width:none;object-fit:contain;display:block;border-radius:8px}
+.ad-house-img{height:100%;width:auto;max-width:100%;object-fit:contain;display:block;border-radius:8px}
 /* 섹터 히트맵 */
 .hm-lead{font-size:12px;color:var(--ink2);line-height:1.55;padding:10px 14px 4px}
 .hm-lead b{color:var(--ink)}
@@ -1916,6 +1918,9 @@ border:1px solid var(--line);border-radius:8px;margin-bottom:5px;background:#0e1
 .bf-stk:hover{border-color:var(--blue);background:var(--panel3)}
 .bf-nm{font-size:13px;color:var(--ink);font-weight:600}
 .bf-sub{font-size:10px;color:var(--dim);margin-left:6px}
+.bf-vs{font-size:12px;font-weight:800;color:var(--teal)}
+.bf-sub2{font-size:10px;color:var(--dim);margin-left:6px}
+.bf-tag{font-size:9.5px;color:var(--muted);background:var(--panel3);border-radius:5px;padding:1px 6px;margin-left:6px;font-weight:600}
 .bf-disc{padding:6px 10px;border:1px solid var(--line);border-radius:8px;margin-bottom:5px;background:#0e1622}
 .bf-disc a{font-size:12px;color:#8fb6f0;text-decoration:none}
 /* 테마 자금 플로우 바(좌측 패널 + 브리핑 공용) */
@@ -2116,7 +2121,6 @@ return '<div class="top">'+
 (state.mode==="sample"?"샘플 데이터":(pub?"공시·뉴스":"라이브"))+'</span>'+
 '<span class="meta-divider"></span>'+
 (pub?'':'<button class="btn bell" data-action="alerts-toggle">🔔'+(state.alertUnseen>0?'<span class="bell-badge">'+(state.alertUnseen>99?'99+':state.alertUnseen)+'</span>':'')+'</button>')+
-'<button class="btn" data-action="hotdisc">🔥 주요공시</button>'+
 '<button class="btn btn-hi btn-gov" data-action="gov" data-tip="🐋 스마트머니 신호|자사주 매입·소각, 대주주·임원 지분변동, 최대주주 변경을 한곳에. 고수들이 보는 공시를 모았습니다.">'+
   '<span class="btn-hi-ic">🐋</span> 스마트머니'+
   '<span class="btn-new">NEW</span>'+
@@ -3184,8 +3188,43 @@ return '<div class="bf-mrow"><span class="bf-mtopic">'+esc(n.topic||'')+'</span>
 '<a class="bf-mtitle" href="'+esc(n.link||'#')+'" target="_blank" rel="noopener">'+esc(n.title)+'</a>'+pub+'</div>';
 }).join("")+'</div>';
 }
-var grid='<div class="bf-grid"><div class="bf-col">'+foreign+inst+'</div><div class="bf-col">'+tflow+disc+'</div></div>';
-var empty=(!overnight&&!domestic&&!reg&&!foreign&&!inst&&!macro)?'<div class="note">데이터를 모으는 중입니다. 라이브 연결 + 적재 후 표시됩니다.</div>':'';
+// 저평가 우량주 TOP (항상 채워지는 섹션)
+var valtop='';
+if(b.value_top&&b.value_top.length){
+valtop='<div class="bf-sec"><div class="bf-h">⭐ 오늘의 저평가 우량주 TOP</div>'+
+b.value_top.map(function(r){
+var vs=(r.vscore!=null)?('<span class="bf-vs">'+Math.round(r.vscore)+'점</span>'):'';
+var sub=[];
+if(r.per!=null) sub.push('PER '+r.per);
+if(r.roe!=null) sub.push('ROE '+r.roe+'%');
+return '<div class="bf-stk" data-action="pick" data-symbol="'+esc(r.symbol||'')+'">'+
+'<span class="bf-nm">'+esc(r.name||'')+(r.sector?'<span class="bf-tag">'+esc(r.sector)+'</span>':'')+'</span>'+
+'<span>'+vs+(sub.length?'<span class="bf-sub2">'+esc(sub.join(' · '))+'</span>':'')+'</span></div>';
+}).join("")+'</div>';
+}
+// 스마트머니 신호 (자사주·지분변동·경영권)
+var smart='';
+if(b.smart_money&&b.smart_money.length){
+smart='<div class="bf-sec"><div class="bf-h">🐋 스마트머니 신호</div>'+
+b.smart_money.map(function(it){
+var g=it.gov||it||{};
+var catIc={buyback:'🔁',insider:'🔍',control:'👑'}[g.cat]||'📄';
+var signCls=g.sign==='positive'?'up':(g.sign==='negative'?'dn':'');
+return '<div class="bf-disc"><span class="bf-mtopic">'+catIc+' '+esc(g.label||'')+'</span> '+
+'<a href="'+esc(it.url||'#')+'" target="_blank" rel="noopener" class="'+signCls+'">'+esc(it.corp||'')+'</a></div>';
+}).join("")+'</div>';
+}
+// 이번 주 실적발표
+var earn='';
+if(b.earnings_week&&b.earnings_week.length){
+earn='<div class="bf-sec"><div class="bf-h">📊 이번 주 실적발표</div>'+
+b.earnings_week.map(function(e){
+return '<div class="bf-disc"><span class="bf-mtopic">'+esc((e.date||'').slice(5))+'</span> '+
+'<a href="'+esc(e.url||'#')+'" target="_blank" rel="noopener">'+esc((e.label||'').replace(/^[📊🔔]\s*/,''))+'</a></div>';
+}).join("")+'</div>';
+}
+var grid='<div class="bf-grid"><div class="bf-col">'+foreign+inst+valtop+'</div><div class="bf-col">'+tflow+smart+disc+earn+'</div></div>';
+var empty=(!overnight&&!domestic&&!reg&&!foreign&&!inst&&!macro&&!valtop&&!smart&&!earn)?'<div class="note">데이터를 모으는 중입니다. 라이브 연결 + 적재 후 표시됩니다.</div>':'';
 body = summary+macro+overnight+domestic+reg+grid+empty;
 }
 var when = b? tFmt(b.ts,"md_hm")+' 기준' : '';
@@ -4440,6 +4479,7 @@ function moreMenuHTML(){
 if(!state.moreOpen) return '';
 var items=[
   {a:"briefing",label:"🌅 오늘의 증시 브리핑"},
+  {a:"hotdisc",label:"🔥 오늘의 주요 공시"},
   {a:"ipo",label:"🎈 신규 공모주(IPO)"},
   {a:"glossary",label:"📖 용어사전"},
   {a:"dguide",label:"📑 공시읽기"},

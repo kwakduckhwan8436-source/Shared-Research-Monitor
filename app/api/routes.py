@@ -17,7 +17,7 @@ from typing import Any, Optional
 
 from app.llm import explain as explain_mod
 
-BUILD_VERSION = "2026.08.16-banner1"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
+BUILD_VERSION = "2026.08.16-brief-fix"   # 서버가 새 코드로 떴는지 확인용(health.v / presence.v)
 
 
 def _rsi_series(values: list, period: int = 14) -> list:
@@ -392,6 +392,51 @@ def register_routes(app: Any, ctx: Any) -> None:
             out["theme_flow"] = []
         # 자동 시황 문장(오프라인 규칙 기반)
         out["summary"] = _briefing_summary(out)
+        # ── 아래는 수급 데이터가 없어도 채워지는 '항상 풍부한' 섹션들 ──
+        # 저평가 우량주 TOP (vscore 순위표 캐시 재사용). 캐시는 서버 시작 시
+        # _finance_warmup 이 채운다. 아직 비었으면(웜업 진행 중) 이 섹션만 생략
+        # 하고, 무거운 재무 계산을 요청 응답 중에 동기로 돌리지 않는다(브리핑 지연 방지).
+        try:
+            vrows = None
+            for sc in ("all", "wide", "major"):
+                for pr in ("annual", "latest"):
+                    c = _finance_cache.get(sc + ":" + pr)
+                    if c and c.get("rows"):
+                        vrows = c["rows"]; break
+                if vrows:
+                    break
+            if not vrows:
+                # 스코프 키가 'wide' 처럼 period 없이 저장된 경우도 있어 한 번 더 확인
+                for sc in ("wide", "major", "all"):
+                    c = _finance_cache.get(sc)
+                    if c and c.get("rows"):
+                        vrows = c["rows"]; break
+            if vrows:
+                ranked = sorted([r for r in vrows if r.get("vscore") is not None],
+                                key=lambda r: r["vscore"], reverse=True)[:6]
+                out["value_top"] = [{"name": r.get("name"), "symbol": r.get("symbol"),
+                                     "sector": r.get("sector"), "vscore": r.get("vscore"),
+                                     "per": r.get("per"), "roe": r.get("roe")} for r in ranked]
+            else:
+                out["value_top"] = []
+        except Exception:
+            out["value_top"] = []
+        # 스마트머니 신호 — 공용 헬퍼로 직접 조회(캐시 없으면 새로 가져옴)
+        try:
+            out["smart_money"] = (_gov_fetch(30) or [])[:6]
+        except Exception:
+            out["smart_money"] = []
+        # 이번 주 실적발표 예정/공시 — 캘린더 이벤트에서 earnings 만
+        try:
+            _now = ctx.clock.now()
+            evs = _dart_earnings_events(_now.year, _now.month) or []
+            from datetime import timedelta as _td
+            wk0 = (_now.date() - _td(days=_now.weekday())).isoformat()
+            wk1 = (_now.date() + _td(days=6 - _now.weekday())).isoformat()
+            wk = [e for e in evs if wk0 <= (e.get("date") or "") <= wk1 and e.get("kind") != "more"]
+            out["earnings_week"] = wk[:8]
+        except Exception:
+            out["earnings_week"] = []
         # 밤새 해외/매크로 이슈 — CPI·PPI·금리·연준·해외 증시 뉴스
         try:
             out["macro_news"] = _macro_overnight_news()
@@ -1550,6 +1595,50 @@ def register_routes(app: Any, ctx: Any) -> None:
 
     _gov_cache = {"items": None, "at": 0.0, "err": None}
 
+    def _gov_fetch(days: int = 30) -> list:
+        """주주환원·지배구조 공시를 캐시(6시간)에서 반환. 없으면 새로 조회.
+        엔드포인트와 브리핑이 공용으로 쓴다."""
+        if ctx.config.data_source == "mock" or ctx.dart is None or not ctx.config.dart_api_key:
+            return []
+        now = ctx.clock.now()
+        now_t = _time.time()
+        items = _gov_cache["items"]
+        if items is not None and now_t - _gov_cache["at"] <= 21600:
+            return items
+        from datetime import timedelta as _td
+        end = now.date()
+        bgn = end - _td(days=max(1, min(days, 90)))
+        try:
+            rows = ctx.dart.governance_disclosures(now, bgn, end, max_pages=20)
+            items = []
+            seen = set()
+            for it in rows:
+                g = it.get("gov") or {}
+                nm = it.get("corp") or ""
+                pub = (it.get("published_at") or "")[:10]
+                key = (pub, nm, g.get("label", ""))
+                if not nm or key in seen:
+                    continue
+                seen.add(key)
+                items.append({
+                    "title": it.get("title", ""), "corp": nm,
+                    "symbol": it.get("symbol", ""),
+                    "market": it.get("market", ""),
+                    "url": it.get("url", ""), "published_at": pub,
+                    "date_only": True,
+                    "cat": g.get("cat", ""), "label": g.get("label", ""),
+                    "sign": g.get("sign", "neutral"),
+                    "importance": g.get("importance", 1),
+                    "amended": g.get("amended", False),
+                })
+            items.sort(key=lambda x: (x["importance"], x.get("published_at", "")),
+                       reverse=True)
+            _gov_cache.update(items=items, at=now_t, err=None)
+        except Exception as e:
+            _gov_cache.update(items=[], at=now_t, err=str(e))
+            items = []
+        return items
+
     @app.get("/api/feed/governance")
     def feed_governance(days: int = 30, cat: str = "", limit: int = 80) -> dict:
         """주주환원·지배구조 공시 — '스마트머니 신호' 패널.
@@ -1563,42 +1652,7 @@ def register_routes(app: Any, ctx: Any) -> None:
             return {"items": [], "attribution": attr,
                     "note": "DART_API_KEY 설정 시 표시됩니다."}
         now = ctx.clock.now()
-        now_t = _time.time()
-        # 캐시: 6시간(공시는 자주 안 바뀜). 필터는 캐시 후 적용.
-        items = _gov_cache["items"]
-        if items is None or now_t - _gov_cache["at"] > 21600:
-            from datetime import timedelta as _td
-            end = now.date()
-            bgn = end - _td(days=max(1, min(days, 90)))
-            try:
-                rows = ctx.dart.governance_disclosures(now, bgn, end, max_pages=20)
-                items = []
-                seen = set()
-                for it in rows:
-                    g = it.get("gov") or {}
-                    nm = it.get("corp") or ""
-                    pub = (it.get("published_at") or "")[:10]
-                    key = (pub, nm, g.get("label", ""))
-                    if not nm or key in seen:
-                        continue
-                    seen.add(key)
-                    items.append({
-                        "title": it.get("title", ""), "corp": nm,
-                        "symbol": it.get("symbol", ""),
-                        "market": it.get("market", ""),
-                        "url": it.get("url", ""), "published_at": pub,
-                        "date_only": True,
-                        "cat": g.get("cat", ""), "label": g.get("label", ""),
-                        "sign": g.get("sign", "neutral"),
-                        "importance": g.get("importance", 1),
-                        "amended": g.get("amended", False),
-                    })
-                items.sort(key=lambda x: (x["importance"], x.get("published_at", "")),
-                           reverse=True)
-                _gov_cache.update(items=items, at=now_t, err=None)
-            except Exception as e:
-                _gov_cache.update(items=[], at=now_t, err=str(e))
-                items = []
+        items = _gov_fetch(days)
         sel = [x for x in (items or []) if not cat or x.get("cat") == cat]
         # 카테고리별 건수(필터 칩 배지용)
         counts = {"buyback": 0, "insider": 0, "control": 0}
