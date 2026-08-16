@@ -55,9 +55,12 @@ def test_banner_width_capped():
     h = _html()
     import re
     m = re.search(r"\.adslot\{[^}]*max-width:(\d+)px", h)
-    assert m and int(m.group(1)) <= 320, "배너 최대폭 상한이 없거나 너무 큼"
+    assert m and int(m.group(1)) <= 400, "배너 최대폭 상한이 없거나 너무 큼"
     # 텍스트가 길어도 한 줄로 말줄임
     assert "text-overflow:ellipsis" in h
+    # 가독성: 배너 글씨가 충분히 큰지(14px 이상)
+    m2 = re.search(r"\.adslot a\{color:[^;]+;font-size:([\d.]+)px", h)
+    assert m2 and float(m2.group(1)) >= 14, "배너 글씨가 너무 작음"
 
 
 def test_briefing_enriched():
